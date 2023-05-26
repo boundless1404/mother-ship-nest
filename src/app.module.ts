@@ -17,6 +17,8 @@ import { LoggerModule } from 'nestjs-pino';
 import helmet from 'helmet';
 import { pathFromRoot } from './config/helpers/general';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { SharedModule } from './shared/shared.module';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const cors = require('cors');
@@ -101,6 +103,8 @@ const validator = new ValidationPipe({
       },
       inject: [ConfigService],
     }),
+    AuthModule,
+    SharedModule,
   ],
   providers: [
     {
@@ -114,11 +118,10 @@ const validator = new ValidationPipe({
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // configured middlewares to be applied to all routes
     consumer
       .apply(cors(), helmet())
       .exclude('/auth/*')
-      .exclude('/shared/user-exists')
+      .exclude('')
       .forRoutes('*');
   }
 }
