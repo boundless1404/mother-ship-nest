@@ -9,13 +9,13 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import AppUser from './AppUser.entity';
-import ProjectUser from './ProjectUser.entity';
 import { TokenCreationPurpose } from '../../lib/enums';
-import User from './User.entity';
+import { User } from '../../auth/entities/User.entity';
 import App from './App.entity';
+import { ProjectUser } from '../../project/entities/ProjectUser.entity';
 
 @Entity()
-export default class Token {
+export class Token {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: string;
 

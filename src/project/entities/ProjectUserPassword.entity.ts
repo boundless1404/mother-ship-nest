@@ -1,5 +1,5 @@
 import { Column, Entity, JoinColumn, OneToOne, PrimaryColumn } from 'typeorm';
-import User from './User.entity';
+import { User } from '../../auth/entities/User.entity';
 
 @Entity()
 export class ProjectUserPassword {

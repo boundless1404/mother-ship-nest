@@ -10,8 +10,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import App from './App.entity';
-import Token from './Token.entity';
-import User from './User.entity';
+import { Token } from './Token.entity';
+import { User } from '../../auth/entities/User.entity';
 
 @Entity()
 export default class AppUser {

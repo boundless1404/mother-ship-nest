@@ -19,6 +19,8 @@ import { pathFromRoot } from './config/helpers/general';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { SharedModule } from './shared/shared.module';
+import { ExtractTokenMiddleWare } from './shared/extractToken.middleware';
+import { ProjectModule } from './project/project.module';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const cors = require('cors');
@@ -37,12 +39,11 @@ const validator = new ValidationPipe({
 
     return new BadRequestException(
       {
-        status: false,
-        code: 'DATA_VALIDATION_ERROR',
+        type: 'VALIDATION_ERROR',
         errors: formattedErrors,
         message: 'Invalid data',
       },
-      'Bad request',
+      'Bad Request',
     );
   },
 });
@@ -105,6 +106,7 @@ const validator = new ValidationPipe({
     }),
     AuthModule,
     SharedModule,
+    ProjectModule,
   ],
   providers: [
     {
@@ -119,7 +121,7 @@ const validator = new ValidationPipe({
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(cors(), helmet())
+      .apply(cors(), helmet(), ExtractTokenMiddleWare)
       .exclude('/auth/*')
       .exclude('')
       .forRoutes('*');

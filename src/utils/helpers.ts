@@ -47,3 +47,7 @@ export function trimObject(
 export const throwBadRequest = (message: string) => {
   throw new HttpException(message, HttpStatus.BAD_REQUEST);
 };
+
+export const throwForbidden = (message: string) => {
+  throw new HttpException(message, HttpStatus.FORBIDDEN);
+};

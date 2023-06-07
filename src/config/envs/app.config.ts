@@ -17,6 +17,8 @@ const getAppConfig = () => {
     JWT_SECRET: processEnvObj.JWT_SECRET,
     JWT_EXPIRY: processEnvObj.JWT_EXPIRY || '8h',
     HASH_SALT_ROUNDS: processEnvObj.HASH_SALT_ROUNDS,
+    DEFAULT_USER_PASSWORD: processEnvObj.DEFAULT_USER_PASSWORD,
+    API_ACCESS_TOKEN_EXPIRY: processEnvObj.API_ACCESS_TOKEN_EXPIRY || '365d',
   };
 };
 

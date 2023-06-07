@@ -6,10 +6,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import ProjectUser from './ProjectUser.entity';
+import { ProjectUser } from './ProjectUser.entity';
 
 @Entity()
-export default class Project {
+export class Project {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: string;
 

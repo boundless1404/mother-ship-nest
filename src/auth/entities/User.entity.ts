@@ -9,13 +9,13 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import AppUser from './AppUser.entity';
-import ProjectUser from './ProjectUser.entity';
-import { ProjectUserPassword } from './ProjectUserPassword.entity';
-import Token from './Token.entity';
+import AppUser from '../../project/entities/AppUser.entity';
+import { ProjectUser } from '../../project/entities/ProjectUser.entity';
+import { ProjectUserPassword } from '../../project/entities/ProjectUserPassword.entity';
+import { Token } from '../../project/entities/Token.entity';
 
 @Entity()
-export default class User {
+export class User {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: string;
 

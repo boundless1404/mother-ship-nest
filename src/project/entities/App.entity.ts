@@ -8,14 +8,14 @@ import {
   OneToOne,
 } from 'typeorm';
 import AppUser from './AppUser.entity';
-import Token from './Token.entity';
+import { Token } from './Token.entity';
 
 @Entity()
 export default class App {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, unique: true })
   name: string;
 
   @Column({ type: 'boolean', default: false })

@@ -10,3 +10,13 @@ export enum SignInTypeEnum {
   FULL_AUTH = 'full_auth',
   SINGLE_SIGN_IN = 'single_signin',
 }
+
+export enum EmailPriority {
+  IMMEDIATE = 'immediate',
+  REGULAR = 'regular',
+  DELAYED = 'delayed',
+}
+
+export enum CacheNameEnum {
+  EMAIL_JOB = 'email_job',
+}

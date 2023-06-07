@@ -6,12 +6,12 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import Project from './Project.entity';
-import Token from './Token.entity';
-import User from './User.entity';
+import { Token } from './Token.entity';
+import { User } from '../../auth/entities/User.entity';
+import { Project } from './Project.entity';
 
 @Entity()
-export default class ProjectUser {
+export class ProjectUser {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: string;
 
