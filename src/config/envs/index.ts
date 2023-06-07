@@ -20,6 +20,9 @@ export type ProcessEnv = {
   DB_CONN_POOL_COUNT: number;
   MAIL_API_KEY: string;
   MAIL_SENDER_ACCOUNT: string;
+  HASH_SALT_ROUNDS: string;
+  DEFAULT_USER_PASSWORD: string;
+  API_ACCESS_TOKEN_EXPIRY: string;
 };
 
 config({
