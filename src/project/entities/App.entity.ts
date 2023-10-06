@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import AppUser from './AppUser.entity';
 import { Token } from './Token.entity';
+import { ProjectAppConfiguration } from './ProjectAppConfiguration.entity';
 
 @Entity()
 export default class App {
@@ -35,6 +36,12 @@ export default class App {
   @OneToMany(() => AppUser, (appUser) => appUser.app)
   appUsers: AppUser[];
 
-  @OneToOne(() => Token, (token) => token.app)
+  @OneToMany(() => Token, (token) => token.app)
   token: Token;
+
+  @OneToOne(
+    () => ProjectAppConfiguration,
+    (projectConfiguration) => projectConfiguration.app,
+  )
+  projectConfiguration: ProjectAppConfiguration;
 }

@@ -6,7 +6,9 @@ export const GetAuthPayload = createParamDecorator(
     const request = ctx.switchToHttp().getRequest() as PlatformRequest;
     if (data) {
       const authPayloadProp = data as string;
-      return request.authPayload ? authPayloadProp[authPayloadProp] : undefined;
+      return request.authPayload
+        ? request.authPayload[authPayloadProp]
+        : undefined;
     }
 
     return {

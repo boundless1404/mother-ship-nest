@@ -1,7 +1,11 @@
-import { AuthenticatedApiData } from './../lib/types';
-import { config } from 'dotenv';
+import {
+  AuthPayload,
+  AuthResponse,
+  AuthenticatedApiData,
+  AuthenticatedUserData,
+} from './../lib/types';
 import { Injectable } from '@nestjs/common';
-import { DataSource, Entity, EntityManager } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import { Project } from './entities/Project.entity';
 import { ProjectUser } from './entities/ProjectUser.entity';
 import { CreateAppDto, CreateProjectDto } from './dto/dto';
@@ -12,10 +16,17 @@ import { ConfigService } from '@nestjs/config';
 import { SharedService } from 'src/shared/shared.service';
 import { AppUserSignInDto, AppUserSignUpDto } from './app-controller/dto/dto';
 import { Token } from './entities/Token.entity';
-import { EmailPriority, TokenCreationPurpose } from 'src/lib/enums';
+import {
+  AppVerificationPivot,
+  AppVerificationType,
+  EmailPriority,
+  TokenCreationPurpose,
+} from 'src/lib/enums';
 import { User } from 'src/auth/entities/User.entity';
-import { Sign } from 'crypto';
 import { Email } from 'src/shared/email.entity';
+import { ProjectAppConfiguration } from './entities/ProjectAppConfiguration.entity';
+import { Sms } from './entities/Sms.entity';
+import { isEmail } from 'class-validator';
 
 @Injectable()
 export class ProjectService {
@@ -128,7 +139,7 @@ export class ProjectService {
     let project = this.transferProjectData(createProjectDto);
 
     await this.dbSource.transaction(async (transactionManager) => {
-      project = await transactionManager.save(project);
+      project = await transactionManager.save(Project, project);
 
       const projectUser = this.createProjectUserPassword(userId, project.id);
       await transactionManager.save(projectUser);
@@ -176,6 +187,45 @@ export class ProjectService {
     return appAccessToken;
   }
 
+  async grantAppAccessToUser(userId: string, projectId: string, appId: string) {
+    // find the project user
+    const dbManager = this.dbSource.manager;
+    const projectUser = await dbManager.findOne(ProjectUser, {
+      where: { projectId, userId },
+    });
+
+    if (!projectUser) {
+      throwForbidden(
+        'User is not admin of the project or project does not exist',
+      );
+    }
+
+    // check app is in project
+    const app = await dbManager.findOne(App, {
+      where: { id: appId, projectId },
+    });
+
+    if (!app) {
+      throwBadRequest('App does not exist in project');
+    }
+
+    // const apiData: AuthenticatedApiData = {
+    //   appId,
+    //   appName: app.name,
+    // };
+
+    // const authPayload: AuthPayload = {
+    //   apiData,
+    // };
+
+    const apiAccessToke = this.generateApiTokenForApp(
+      appId,
+      app.name,
+      dbManager,
+    );
+    return apiAccessToke;
+  }
+
   async generateApiTokenForApp(
     appId: string,
     appName: string,
@@ -186,14 +236,21 @@ export class ProjectService {
     appToken.appId = appId;
     appToken.purpose = TokenCreationPurpose.ACCESS_TOKEN;
 
-    const appAccessTokenPayload = {
+    const apiData = {
       appId,
       appName,
     };
 
-    const apiAccessTokenExpiry = this.getApiAccessTokenExpiry();
+    const authPayload: AuthPayload = {
+      apiData,
+    };
+
+    const oneHourDefaultExpiry = '5000d';
+    const apiAccessTokenExpiry = Number(
+      this.getApiAccessTokenExpiry() || oneHourDefaultExpiry,
+    );
     const appAccessToken = this.sharedService.signPayload(
-      appAccessTokenPayload,
+      authPayload,
       apiAccessTokenExpiry,
     );
 
@@ -224,44 +281,56 @@ export class ProjectService {
       throwBadRequest('App does not exist');
     }
 
+    const userEmail = signUpUserDto.email;
+    const userPhone = signUpUserDto.phone;
+    const userEmailIsValid = isEmail(userEmail || '');
+    if (!userEmailIsValid || userPhone) {
+      throwBadRequest('Either email or phone is required');
+    }
+
     // check if user exists by email
     let user = await dbManager.findOne(User, {
-      where: { email: signUpUserDto.email },
+      where: userEmailIsValid ? { email: userEmail } : { phone: userPhone },
     });
 
     await dbManager.transaction(async (transactionManager) => {
       // if user exists, associate user to app
-      if (user) {
-        const appUser = this.associateUserToApp(appId, user.id);
-        appUser.password = await this.sharedService.hashPassword(
-          signUpUserDto.password,
-        );
-        await transactionManager.save(appUser);
-      } else {
+      const password = signUpUserDto.password;
+      if (!user) {
         // if user does not exist, create user and associate user to app
-        user = new User();
-        Object.assign(user, signUpUserDto);
+        user = transactionManager.create(User, signUpUserDto);
         // save user in db with transaction
         user = await transactionManager.save(user);
+      }
+      await this.createAppUser(appId, user.id, password, transactionManager);
 
-        // const appUser = this.associateUserToApp(appId, user.id);
-        // appUser.password = await this.sharedService.hashPassword(
-        //   signUpUserDto.password,
-        // );
-        // await transactionManager.save(appUser);
-
-        await this.createAppUser(appId, user.id, transactionManager);
-
-        // register verification email
-        if (signUpUserDto.veriryEmail) {
-          await this.registerVerificationEmail(
-            appId,
-            signUpUserDto.email,
-            transactionManager,
-          );
-        }
+      if (signUpUserDto.initiateVerificationRequest) {
+        await this.registerVerificationRequest(appId, transactionManager, {
+          userEmail,
+          userPhone,
+        });
       }
     });
+
+    // * Remove password from user object
+
+    return this.getAuthResponse({ user, isVerified: false });
+  }
+
+  getAuthResponse({
+    user,
+    isVerified,
+  }: { user?: User; isVerified?: boolean } = {}) {
+    return {
+      ...(user
+        ? this.sharedService.removeUnwantedFields<User>(user, [
+            'createdAt',
+            'updatedAt',
+            'deletedAt',
+          ])
+        : {}),
+      isVerified,
+    } as AuthResponse;
   }
 
   async signUserInApp(
@@ -284,9 +353,11 @@ export class ProjectService {
       throwBadRequest('App does not exist');
     }
 
-    // check if user exists by email
+    // check if user exists by email or phone
     const user = await dbManager.findOne(User, {
-      where: { email: signInUserDto.email },
+      where: signInUserDto.email
+        ? { email: signInUserDto.email }
+        : { phone: signInUserDto.phone },
     });
 
     if (!user) {
@@ -303,121 +374,240 @@ export class ProjectService {
     }
 
     // check if password is correct
-    const isPasswordCorrect = await this.sharedService.comparePassword(
+    const passwordIsCorrect = await this.sharedService.comparePassword(
       signInUserDto.password,
       appUser.password,
     );
 
-    if (!isPasswordCorrect) {
+    if (!passwordIsCorrect) {
       throwForbidden('Password is incorrect');
     }
 
-    // generate app token
-    const appAccessToken = await this.generateApiTokenForApp(
-      appId,
-      app.name,
-      dbManager,
-    );
+    // * Generate app token
+    // * Consider adding configuration to check whether or not to generate token for user, this has to use a pre-configured secret for signing payload
+    // const appAccessToken = await this.generateApiTokenForApp(
+    //   appId,
+    //   app.name,
+    //   dbManager,
+    // );
 
-    return appAccessToken;
+    return this.getAuthResponse({ user, isVerified: appUser.isVerified });
   }
 
   async createAppUser(
     appId: string,
     userId: string,
-    transactionManager: EntityManager,
+    password?: string,
+    transactionManager?: EntityManager,
   ) {
     const dbManager = this.dbSource.manager;
     const appUser = this.associateUserToApp(appId, userId);
-    appUser.password = await this.getDefaultUserPassword();
+    appUser.password = password
+      ? await this.sharedService.hashPassword(password)
+      : await this.getDefaultUserPassword();
     await (transactionManager || dbManager).save(appUser);
   }
 
-  async registerVerificationEmail(
+  async registerVerificationRequest(
     appId: string,
-    userEmail: string,
     dbManager: EntityManager,
+    options: {
+      userEmail?: string;
+      userPhone?: string;
+    },
   ) {
+    // * Find user with provided email or phone
+    const { userEmail, userPhone } = options;
+    const userContactIsEmail = isEmail(userEmail);
+    const user = await dbManager.findOne(User, {
+      where: userContactIsEmail ? { email: userEmail } : { phone: userPhone },
+      relations: {
+        projectUsers: true,
+      },
+    });
+
+    if (!user) {
+      throwBadRequest('User does not exist');
+    }
+
+    // * Get the project Id to find the projectAppConfiguration
+    const projectId = user.projectUsers.find(
+      (projectUser) => projectUser.userId === user.id,
+    ).projectId;
+
+    // * Get the projectAppConfiguration
+    const projectAppConfiguration = await dbManager.findOne(
+      ProjectAppConfiguration,
+      {
+        where: { projectId, appId },
+        relations: {
+          app: true,
+        },
+      },
+    );
+
+    let useEmailForVerification = false;
+    const appVerificationPivot = projectAppConfiguration.appVerificationPivot;
+    if (
+      (userContactIsEmail &&
+        userPhone &&
+        appVerificationPivot === AppVerificationPivot.EMAIL) ||
+      userContactIsEmail
+    ) {
+      useEmailForVerification = true;
+    }
+
+    // get the appUser with the provided appId and userId
+    const appUser = await dbManager.findOne(AppUser, {
+      where: { appId, userId: user.id },
+    });
+
+    if (!appUser) {
+      throwBadRequest('User is not associated to app');
+    }
+
+    const appUserId = appUser.id;
+
     // generate token to send to user along with link
     const tokenExpiry = 24 * 60 * 60 * 1000; // 24 hours
-    const tokenString = this.sharedService.signPayload(
-      { email: userEmail, appId, purpose: TokenCreationPurpose.SIGN_UP },
-      '24h',
-    );
+    const verificationTokenCount =
+      projectAppConfiguration.verificationTokenCount;
+    // TODO: write function to generate token code based on verificationTokenCount
+    const tokenCode = this.generateTokenCode(verificationTokenCount);
 
-    // abstract this to a method
-    const token = this.createTokenObject(
-      tokenString,
-      TokenCreationPurpose.SIGN_UP,
-      tokenExpiry,
-    );
-    token.appId = appId;
+    // * Start transaction
+    await dbManager.transaction(async (transactionManager) => {
+      // abstract this to a method
+      const token = this.createTokenObject(
+        tokenCode,
+        TokenCreationPurpose.SIGN_UP,
+        tokenExpiry,
+      );
+      token.appId = appId;
 
-    // save token in db
-    await dbManager.save(token);
+      // save token in db
+      await transactionManager.save(token);
 
-    const serverUrl = this.configService.get('SERVER_URL');
-    const tokenUrl = `${serverUrl}/v1/app/${appId}/verify-email?token=${tokenString}`;
+      const app = projectAppConfiguration.app;
+      const authhVerificationType = projectAppConfiguration.appVerificationType;
+      const appAuthVerificationUrl =
+        projectAppConfiguration.appAuthVerificationUrl;
+      const serverUrl = this.configService.get('SERVER_URL');
+      const apiBaseUrl = this.configService.get('API_BASE_URL') || '/v1/app';
+      const tokenUrl = `${
+        appAuthVerificationUrl
+          ? `${appAuthVerificationUrl}`
+          : `${serverUrl}${apiBaseUrl}/verify`
+      }?token=${tokenCode}&appUserId=${appUserId}`;
 
-    // send email to user with link using sendgrid service
-    const mailSenderAccount = this.configService.get('MAIL_SENDER_ACCOUNT');
-    const msg = {
-      to: userEmail,
-      from: mailSenderAccount,
-      subject: 'Verify Email',
-      html: `Kindly, click to verify your email. <a href="${tokenUrl}">Verify Email</a>`,
-    };
+      if (useEmailForVerification) {
+        // send email to user with link using sendgrid service
+        const mailSenderAccount = this.configService.get('MAIL_SENDER_ACCOUNT');
+        const msg = {
+          to: userEmail,
+          from: mailSenderAccount,
+          subject: 'Verify Email',
+          html:
+            authhVerificationType === AppVerificationType.CODE
+              ? `Please use this code to verify completer your verification: ${token}`
+              : `
+        Kindly, click to verify your email. <a href="${tokenUrl}">Verify Email</a>. Or copy and paste this link in your browser ${tokenUrl}.
+      `,
+        };
 
-    // save email in db to send later
-    const email = new Email();
-    email.body = msg;
-    email.priority = EmailPriority.IMMEDIATE;
+        // save email in db to send later
+        const email = new Email();
+        email.body = msg;
+        email.priority = EmailPriority.IMMEDIATE;
 
-    await dbManager.save(email);
+        await transactionManager.save(email);
+      } else {
+        // * Register sms content in db to send later
+        const sms = new Sms();
+        sms.to = user.phone;
+        sms.content =
+          authhVerificationType === AppVerificationType.CODE
+            ? `Please use this code to verify completer your verification: ${token}`
+            : `
+              Kindly, click to verify your email ${tokenUrl}.
+               Or copy and paste the link in your browser.
+            `;
+        sms.sender = app.name;
 
-    // when user clicks link, verify token against token in db
+        await transactionManager.save(sms);
+      }
+    });
+  }
+
+  generateTokenCode(verificationTokenCount) {
+    let tokenCode = '';
+    const characters = '0123456789';
+    const charactersLength = characters.length;
+    for (let i = 0; i < verificationTokenCount; i++) {
+      tokenCode += characters.charAt(
+        Math.floor(Math.random() * charactersLength),
+      );
+    }
+    return tokenCode;
   }
 
   // write method to respond to verify email link
-  async verifyEmail(appId: string, token: string) {
+  async completeAppUserVerification(
+    apiData: AuthenticatedApiData,
+    email: string,
+    token: string,
+    tokenPurpose: TokenCreationPurpose,
+  ) {
+    const appId = apiData.appId;
+    const userEmail = email;
     const dbManager = this.dbSource.manager;
     // check if token exists in db
     const tokenInDb = await dbManager.findOne(Token, {
-      where: { appId, valueOfToken: token },
+      // where: { appUserId, valueOfToken: token, purpose: tokenPurpose },
+      where: {
+        valueOfToken: token,
+        purpose: tokenPurpose,
+        appUser: {
+          app: { id: appId },
+          user: { email: userEmail },
+        },
+      },
       relations: {
-        app: true,
+        appUser: { user: true },
       },
     });
 
     if (!tokenInDb) {
-      throwBadRequest('Invalid token');
+      throwBadRequest('Invalid token or user');
     }
 
     // check if token is not expired
     const isTokenExpired = this.sharedService.isTokenExpired(
-      tokenInDb.expiry,
       tokenInDb.createdAt,
+      {
+        expiresInHHours: tokenInDb.expiry,
+      },
     );
 
     if (isTokenExpired) {
       throwBadRequest('Token is expired');
     }
 
-    // check if token is not used
-    if (tokenInDb.isUsed) {
-      throwBadRequest('Token is already used');
-    }
+    const appUser = tokenInDb.appUser;
+    await dbManager.transaction(async (transactionManager) => {
+      // * Update appUser if token purpose is sign-up
+      if (appUser && tokenPurpose === TokenCreationPurpose.SIGN_UP) {
+        appUser.isVerified = true;
+      }
 
-    // check if token is for sign up
-    if (tokenInDb.purpose !== TokenCreationPurpose.SIGN_UP) {
-      throwBadRequest('Token is not for sign up');
-    }
+      await transactionManager.save(appUser);
 
-    // mark token as used
-    tokenInDb.isUsed = true;
-    await dbManager.save(tokenInDb);
+      //  * Delete token from db
+      await dbManager.delete(Token, { id: tokenInDb.id });
+    });
 
-    // associate user to app
-    await this.createAppUser(appId, tokenInDb.userId, dbManager);
+    return this.getAuthResponse({
+      isVerified: appUser.isVerified,
+    });
   }
 }

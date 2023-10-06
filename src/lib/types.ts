@@ -1,3 +1,5 @@
+import { User } from 'src/auth/entities/User.entity';
+
 export enum FileUploadExtensions {
   PDF = 'pdf',
   WORD_DOC = 'doc',
@@ -45,7 +47,7 @@ export interface PlatformRequest extends Request {
 }
 
 export interface AuthPayload {
-  userData: AuthenticatedUserData;
+  userData?: AuthenticatedUserData;
   profile?: unknown;
   apiData?: AuthenticatedApiData;
   exp?: number | unknown;
@@ -61,4 +63,109 @@ export interface AuthenticatedUserData {
 export interface AuthenticatedApiData {
   appId: string;
   appName: string;
+}
+
+// * Remove unwanted fields from User entity
+export type AuthResponse = Omit<
+  User,
+  'createdAt' | 'updatedAt' | 'deletedAt'
+> & {
+  isVerified: boolean;
+};
+
+export interface BrevoSmtpEmail {
+  to: { email: string }[];
+  templateId?: number;
+  htmlContent?: string;
+  sender: { name: string; email: string };
+  subject: string;
+  params?: { [key: string]: string };
+  attachment?: { url?: string; name?: string; content?: string }[];
+}
+
+export interface MTNSmsOptions {
+  /**
+   * The sender address to use for the message. If this is provided, it will take precedence over the serviceCode.
+   * @type {string}
+   */
+  senderAddress?: string;
+
+  /**
+   * The array of receiver addresses for the message.
+   * @type {string[]}
+   * @required
+   */
+  receiverAddress: string[];
+
+  /**
+   * The message to send.
+   * @type {string}
+   * @required
+   */
+  message: string;
+
+  /**
+   * The client correlator ID for the message.
+   * @type {string}
+   * @required
+   */
+  clientCorrelatorId: string;
+
+  /**
+   * The keyword to use for the message.
+   * @type {string}
+   */
+  keyword?: string;
+
+  /**
+   * The service code to use for the message.
+   * @type {string}
+   * @required
+   */
+  serviceCode: string;
+
+  /**
+   * Whether to request a delivery report for the message. Default is false.
+   * @type {boolean}
+   */
+  requestDeliveryReceipt?: boolean;
+}
+
+export interface MTNSmsResponse {
+  /**
+   * The MADAPI Canonical Error Code (it is 4 characters long and it is not the HTTP Status Code which is 3 characters long). Back-end system errors are mapped to specific canonical error codes which are returned. More information on these mappings can be found on the MADAPI Confluence Page 'Response Codes'.
+   * @type {string}
+   * @required
+   */
+  statusCode: string;
+
+  /**
+   * More details and corrective actions related to the error which can be shown to a client.
+   * @type {string}
+   * @required
+   */
+  statusMessage: string;
+
+  /**
+   * MADAPI generated Id to include for tracing requests.
+   * @type {string}
+   * @required
+   */
+  transactionId: string;
+
+  /**
+   * The status of the submitted outbound message(s).
+   * @type {string}
+   * @required
+   */
+  data: {
+    status: string;
+  };
+}
+
+export interface MTNRegisterCallbackUrlOptions {
+  callbackUrl: string;
+  targetSystem: string;
+  deliveryReportUrl: string;
+  serviceCode: string;
 }

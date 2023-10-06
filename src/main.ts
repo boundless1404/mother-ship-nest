@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import getAppConfig from './config/envs/app.config';
 import { Logger, LoggerErrorInterceptor } from 'nestjs-pino';
+import { Logger as NestLogger } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -41,6 +42,9 @@ async function bootstrap() {
   await app.listen(
     process.env.PORT || process.env.SERVER_PORT || '3000',
     process.env.HOST || process.env.SERVER_HOST || '0.0.0.0',
+    () => {
+      NestLogger.log`Listening...`;
+    },
   );
 
   const msg = `Application is running on: ${await app.getUrl()}`;

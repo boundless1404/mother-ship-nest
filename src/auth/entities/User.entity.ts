@@ -31,8 +31,12 @@ export class User {
   lastName: string;
 
   @Index()
-  @Column({ type: 'varchar', nullable: false, unique: true })
+  @Column({ type: 'varchar', nullable: true, unique: true })
   email: string;
+
+  @Index()
+  @Column({ type: 'varchar', nullable: true, unique: true })
+  phone: string;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -56,6 +60,6 @@ export class User {
   )
   projectUserPassword: ProjectUserPassword;
 
-  @OneToOne(() => Token, (token) => token.user)
+  @OneToMany(() => Token, (token) => token.user)
   token: Token;
 }

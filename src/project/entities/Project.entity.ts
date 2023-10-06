@@ -7,6 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { ProjectUser } from './ProjectUser.entity';
+import { ProjectAppConfiguration } from './ProjectAppConfiguration.entity';
 
 @Entity()
 export class Project {
@@ -27,6 +28,9 @@ export class Project {
   // relations
   @OneToMany(() => ProjectUser, (projectUser) => projectUser.project)
   projectUsers: ProjectUser[];
+
+  @OneToMany(() => ProjectAppConfiguration, (projectApp) => projectApp.project)
+  projectAppConfigurations: ProjectAppConfiguration[];
 
   //   @OneToMany(() => AppUser, (appUser) => appUser.project)
   //   appUsers: AppUser[];

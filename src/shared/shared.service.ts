@@ -2,8 +2,19 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import sendgridMail, { ClientResponse, MailDataRequired } from '@sendgrid/mail';
-import { hash } from 'bcrypt';
-import { MAIL_API_KEY } from 'src/config/envs';
+import { compare, hash } from 'bcrypt';
+// import { MAIL_API_KEY } from 'src/config/envs';
+import { Sms } from 'src/project/entities/Sms.entity';
+// import * as twilio from 'twilio';
+import { SibApiV3Sdk } from 'sib-api-v3-sdk';
+import {
+  BrevoSmtpEmail,
+  MTNSmsOptions,
+  MTNSmsResponse,
+  MTNRegisterCallbackUrlOptions,
+  AuthPayload,
+} from 'src/lib/types';
+import axios from 'axios';
 
 @Injectable()
 export class SharedService {
@@ -12,28 +23,32 @@ export class SharedService {
   }
 
   async hashPassword(data: string | Buffer) {
-    const saltRounds = this.config.get('HASH_SALT_ROUNDS') || 10;
+    const saltRounds = Number(this.config.get('HASH_SALT_ROUNDS') || 10);
     const hashedPassword = await hash(data, saltRounds);
     return hashedPassword;
   }
 
   async veryfyJwtToken(token: string): Promise<Record<string, unknown>> {
-    const payload = await this.jwtService.verify(token);
+    const payload = await this.jwtService.verify(token, {
+      secret: this.config.get('JWT_SECRET'),
+    });
     return payload;
   }
 
   signPayload(
-    payload: string | object | Buffer,
+    payload: string | Buffer | AuthPayload,
     expiresIn?: string | number,
   ): string {
-    const token = this.jwtService.sign(payload, { expiresIn });
+    const token = this.jwtService.sign(payload, {
+      expiresIn,
+      secret: this.config.get('JWT_SECRET'),
+    });
     return token;
   }
 
   async comparePassword(password: string, hashedPassword: string) {
     // hash password and compare with the one in the database
-    const passwordHash = await this.hashPassword(password);
-    const isPasswordCorrect = passwordHash === hashedPassword;
+    const isPasswordCorrect = await compare(password, hashedPassword);
     return isPasswordCorrect;
   }
 
@@ -55,5 +70,189 @@ export class SharedService {
       Logger.error(error, 'emailService');
       return undefined;
     }
+  }
+
+  // async isTokenExpired(expiry: number, createdAt: Date) {
+  //   const currentTime = Date.now();
+  //   const timeDifference = currentTime - createdAt.getTime();
+  //   const expiryTime = expiry * 60 * 60 * 1000; // convert hours to milliseconds
+  //   if (timeDifference > expiryTime) {
+  //     return true;
+  //   }
+  //   return false;
+  // }
+
+  async isTokenExpired(
+    createdAt: Date,
+    options: { expiresInHHours?: number; expiresInSeconds?: number },
+  ) {
+    const expiry = options.expiresInSeconds || options.expiresInHHours;
+    const tokenExpirtyFactor = 1000 * 60 * options.expiresInHHours ? 60 : 1;
+    const currentTime = Date.now();
+    const timeDifferenceInMilliseconds = currentTime - createdAt.getTime();
+    const expiryTime = expiry * tokenExpirtyFactor; // convert hours to milliseconds
+    if (timeDifferenceInMilliseconds > expiryTime) {
+      return true;
+    }
+    return false;
+  }
+
+  // * Implement sending sms with twilio
+  async sendSms(sms: Sms) {
+    //
+    //Get account SID and auth token from environment variables
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const sender = process.env.TWILIO_PHONE_NUMBER;
+
+    // try {
+    //   const message = await client.messages.create({
+    //     body: sms.message,
+    //     from: `+1${sms.from}`,
+    //     to: `+1${sms.to}`
+    //   });
+    //   console.log(message.sid);
+    // } catch (error) {
+    //   console.log(error);
+    // }
+  }
+
+  async sendSmsWithMtonApi(
+    options: MTNSmsOptions,
+  ): Promise<MTNSmsResponse | undefined> {
+    try {
+      // Ensure that the receiverAddress field is not empty
+      if (!options.receiverAddress || options.receiverAddress.length === 0) {
+        throw new Error('Receiver address is required');
+      }
+
+      // Ensure that the message and clientCorrelatorId fields are not longer than their respective maximum lengths
+      if (options.message.length > 160) {
+        throw new Error('Message cannot be longer than 160 characters');
+      }
+      if (options.clientCorrelatorId.length > 36) {
+        throw new Error(
+          'Client correlator ID cannot be longer than 36 characters',
+        );
+      }
+
+      // Ensure that the serviceCode field is not empty
+      if (!options.serviceCode) {
+        throw new Error('Service code is required');
+      }
+
+      const response = await axios({
+        method: 'POST',
+        url: 'https://api.mtn.com/v3/sms/messages/sms/outbound',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: '',
+        },
+        data: options,
+      });
+
+      if (response.data) {
+        return response.data as MTNSmsResponse;
+      } else {
+        return undefined;
+      }
+    } catch (error) {
+      Logger.error(error, 'SMSService');
+      return undefined;
+    }
+  }
+
+  async registerCallbackUrl(
+    options: MTNRegisterCallbackUrlOptions,
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        'https://api.mtn.com/v3/sms/messages/sms/subscription',
+        {
+          callbackUrl: options.callbackUrl,
+          targetSystem: options.targetSystem,
+          deliveryReportUrl: options.deliveryReportUrl,
+          serviceCode: options.serviceCode,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            transactionId: '',
+            Authorization: '',
+          },
+        },
+      );
+
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to register callback URL: ${error.message}`);
+    }
+  }
+
+  async sendBrevoEmail(sendSmtpEmail: BrevoSmtpEmail) {
+    const brevoApiKey = this.config.get('BREVO_API_KEY');
+    // const brevoApiUrl = 'https://api.brevo.com/v1';
+
+    const defaultClient = SibApiV3Sdk.ApiClient.instance;
+
+    // Configure API key authorization: api-key
+    const apiKey = defaultClient.authentications['api-key'];
+    apiKey.apiKey = brevoApiKey;
+
+    // Configure API key authorization: partner-key
+    const partnerKey = defaultClient.authentications['partner-key'];
+    partnerKey.apiKey = brevoApiKey;
+
+    const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+
+    try {
+      const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+      return data;
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  async sendBrevoBactchedEmail(email: string, templateId: number) {
+    const brevoApiKey = this.config.get('BREVO_API_KEY');
+    // const brevoApiUrl = 'https://api.brevo.com/v1';
+
+    const defaultClient = SibApiV3Sdk.ApiClient.instance;
+
+    // Configure API key authorization: api-key
+    const apiKey = defaultClient.authentications['api-key'];
+    apiKey.apiKey = brevoApiKey;
+
+    // Configure API key authorization: partner-key
+    const partnerKey = defaultClient.authentications['partner-key'];
+    partnerKey.apiKey = brevoApiKey;
+
+    const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+
+    const batchSend = new SibApiV3Sdk.SendSmtpEmail();
+    batchSend.to = [{ email: email }];
+    batchSend.templateId = templateId;
+    batchSend.sender = { name: 'Sender Name', email: 'ender@example.com' };
+    batchSend.subject = 'Test email';
+    batchSend.params = {
+      // Add your template variables here
+      variable1: 'value1',
+      variable2: 'value2',
+    };
+
+    try {
+      const data = await apiInstance.sendTransacEmail(batchSend);
+      console.log('API call successful. Returned data: ', JSON.stringify(data));
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  removeUnwantedFields<T>(data: T, fields: (keyof T)[]) {
+    const dataCopy = { ...data };
+    fields.forEach((field) => {
+      delete dataCopy[field];
+    });
+    return dataCopy as Omit<T, (typeof fields)[number]>;
   }
 }
