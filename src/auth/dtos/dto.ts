@@ -32,3 +32,13 @@ export class AdminUserSignUpDto {
   @IsEnum(SignInTypeEnum)
   signInType: SignInTypeEnum;
 }
+
+export class AdminUserSignInDto {
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
+
+  @IsNotEmpty()
+  @IsString()
+  password: string;
+}

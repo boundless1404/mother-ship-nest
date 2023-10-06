@@ -91,19 +91,19 @@ const validator = new ValidationPipe({
         return dataSourceInstance;
       },
     }),
-    JwtModule.registerAsync({
-      async useFactory(configService: ConfigService) {
-        await ConfigModule.envVariablesLoaded;
+    // JwtModule.registerAsync({
+    //   async useFactory(configService: ConfigService) {
+    //     await ConfigModule.envVariablesLoaded;
 
-        return {
-          signOptions: {
-            expiresIn: configService.get('app.JWT_EXPIRY', '8h'),
-          },
-          secret: configService.get('app.JWT_SECRET'),
-        };
-      },
-      inject: [ConfigService],
-    }),
+    //     return {
+    //       signOptions: {
+    //         expiresIn: configService.get('app.JWT_EXPIRY', '8h'),
+    //       },
+    //       secret: configService.get('app.JWT_SECRET'),
+    //     };
+    //   },
+    //   inject: [ConfigService],
+    // }),
     AuthModule,
     SharedModule,
     ProjectModule,
@@ -116,7 +116,6 @@ const validator = new ValidationPipe({
     JwtService,
     AppService,
   ],
-  exports: [JwtService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

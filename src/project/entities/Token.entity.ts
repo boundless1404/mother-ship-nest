@@ -22,6 +22,9 @@ export class Token {
   @Column({ type: 'varchar' })
   valueOfToken: string;
 
+  /**
+   * Expiry in seconds
+   */
   @Column({ type: 'numeric' })
   expiry: number;
 
@@ -68,11 +71,11 @@ export class Token {
   @JoinColumn({ name: 'projectUserId' })
   projectUser: ProjectUser;
 
-  @OneToOne(() => User, (user) => user.token)
-  @JoinColumn()
+  @ManyToOne(() => User, (user) => user.token)
+  @JoinColumn({ name: 'userId' })
   user: User;
 
-  @OneToOne(() => App, (app) => app.token)
-  @JoinColumn()
+  @ManyToOne(() => App, (app) => app.token)
+  @JoinColumn({ name: 'appId' })
   app: App;
 }

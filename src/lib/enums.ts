@@ -20,3 +20,14 @@ export enum EmailPriority {
 export enum CacheNameEnum {
   EMAIL_JOB = 'email_job',
 }
+
+export enum AppVerificationType {
+  LINK = 'link',
+  CODE = 'code',
+}
+
+export enum AppVerificationPivot {
+  EMAIL = 'email',
+  PHONE = 'phone',
+  AUTHENTICATIOR_APP = 'authenticator_app',
+}

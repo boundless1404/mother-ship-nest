@@ -21,6 +21,9 @@ export default class AppUser {
   @Column({ type: 'varchar' })
   password: string;
 
+  @Column({ type: 'boolean', default: false })
+  isVerified: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -70,6 +70,7 @@ export class BackgroundJobs {
           'emails',
         )
         .where('email.deletedAt is null')
+        // .andWhere('email.retryCount <=2')
         .getRawOne()) as {
         emails: {
           id: string;
@@ -164,6 +165,13 @@ export class BackgroundJobs {
           if (response[0]?.statusCode === 202) {
             emailIdsToDelete.push(email.id);
           }
+          // else {
+          //   email.retryCount++;
+
+          //   if (email.retryCount >= 2) {
+          //     emailIdsToDelete.push(email.id);
+          //   }
+          // }
 
           index++;
         }

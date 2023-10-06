@@ -8,7 +8,7 @@ import {
 } from 'class-validator';
 
 export class AppUserSignUpDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   firstName: string;
 
@@ -20,24 +20,32 @@ export class AppUserSignUpDto {
   @IsString()
   lastName: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsEmail()
   email: string;
 
+  @IsOptional()
+  @IsString()
+  phone: string;
+
   // TODO: replace with a custom password validator
   @IsNotEmpty()
-  @IsStrongPassword()
+  // @IsStrongPassword()
   password: string;
 
   @IsOptional()
   @IsBoolean()
-  veriryEmail: boolean;
+  initiateVerificationRequest: boolean;
 }
 
 export class AppUserSignInDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsEmail()
   email: string;
+
+  @IsOptional()
+  @IsString()
+  phone: string;
 
   @IsNotEmpty()
   @IsString()

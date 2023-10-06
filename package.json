@@ -54,6 +54,7 @@
     "pino-pretty": "^10.0.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.5.5",
+    "sib-api-v3-sdk": "^8.5.0",
     "typeorm": "^0.3.13",
     "until-promise": "^0.3.0"
   },

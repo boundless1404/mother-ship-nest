@@ -7,5 +7,6 @@ import { SharedModule } from 'src/shared/shared.module';
   imports: [SharedModule],
   controllers: [AuthController],
   providers: [AuthService],
+  exports: [AuthService],
 })
 export class AuthModule {}
