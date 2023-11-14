@@ -218,12 +218,12 @@ export class ProjectService {
     //   apiData,
     // };
 
-    const apiAccessToke = this.generateApiTokenForApp(
+    const apiAccessToken = this.generateApiTokenForApp(
       appId,
       app.name,
       dbManager,
     );
-    return apiAccessToke;
+    return apiAccessToken;
   }
 
   async generateApiTokenForApp(
@@ -245,10 +245,10 @@ export class ProjectService {
       apiData,
     };
 
-    const oneHourDefaultExpiry = '5000d';
-    const apiAccessTokenExpiry = Number(
-      this.getApiAccessTokenExpiry() || oneHourDefaultExpiry,
-    );
+    const oneHourDefaultExpiry = 60 * 60 * 24 * 5000; // '5000d'
+    const apiAccessTokenExpiry =
+      parseInt(this.getApiAccessTokenExpiry()) || oneHourDefaultExpiry;
+
     const appAccessToken = this.sharedService.signPayload(
       authPayload,
       apiAccessTokenExpiry,
