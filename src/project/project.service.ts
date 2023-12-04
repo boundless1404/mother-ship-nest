@@ -97,10 +97,20 @@ export class ProjectService {
     return app;
   }
 
-  private associateUserToApp(appId: string, userId: string) {
-    const appUser = new AppUser();
-    appUser.appId = appId;
-    appUser.userId = userId;
+  private async associateUserToApp(appId: string, userId: string) {
+    // check that app is not already associated to project
+    let appUser = await this.dbSource.manager.findOne(AppUser, {
+      where: {
+        appId,
+        userId,
+      },
+    });
+
+    if (!appUser) {
+      appUser = new AppUser();
+      appUser.appId = appId;
+      appUser.userId = userId;
+    }
     return appUser;
   }
 
@@ -170,7 +180,7 @@ export class ProjectService {
       await transactionManager.save(newApp);
 
       // associate user to app
-      const appUser = this.associateUserToApp(newApp.id, userId);
+      const appUser = await this.associateUserToApp(newApp.id, userId);
       appUser.password = await this.getDefaultUserPassword();
 
       // generate app token
@@ -400,12 +410,17 @@ export class ProjectService {
     password?: string,
     transactionManager?: EntityManager,
   ) {
-    const dbManager = this.dbSource.manager;
-    const appUser = this.associateUserToApp(appId, userId);
-    appUser.password = password
-      ? await this.sharedService.hashPassword(password)
-      : await this.getDefaultUserPassword();
-    await (transactionManager || dbManager).save(appUser);
+    const dbManager = transactionManager || this.dbSource.manager;
+    let appUser = await this.associateUserToApp(appId, userId);
+
+    if (!appUser.id) {
+      appUser.password = password
+        ? await this.sharedService.hashPassword(password)
+        : await this.getDefaultUserPassword();
+      appUser = await dbManager.save(appUser);
+    }
+
+    return appUser;
   }
 
   async registerVerificationRequest(
@@ -509,7 +524,7 @@ export class ProjectService {
           subject: 'Verify Email',
           html:
             authhVerificationType === AppVerificationType.CODE
-              ? `Please use this code to verify completer your verification: ${token}`
+              ? `Please use this code to complete your verification: ${token}`
               : `
         Kindly, click to verify your email. <a href="${tokenUrl}">Verify Email</a>. Or copy and paste this link in your browser ${tokenUrl}.
       `,
