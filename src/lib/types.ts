@@ -70,7 +70,9 @@ export type AuthResponse = Omit<
   User,
   'createdAt' | 'updatedAt' | 'deletedAt'
 > & {
-  isVerified: boolean;
+  isVerified?: boolean;
+  isNewUser?: boolean;
+  userCreatedInApp?: boolean;
 };
 
 export interface BrevoSmtpEmail {
