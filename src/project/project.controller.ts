@@ -45,14 +45,14 @@ export class ProjectController {
   ) {
     //
     const userId = authPayload.userData.id;
-    const appAccesToken = await this.projectService.createAppInProject(
+    const appAccessToken = await this.projectService.createAppInProject(
       createAppDto,
       userId,
       projectId,
     );
 
     return {
-      appAccesToken,
+      apiToken: appAccessToken,
     };
   }
 

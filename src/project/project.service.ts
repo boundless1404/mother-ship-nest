@@ -27,6 +27,8 @@ import { Email } from 'src/shared/email.entity';
 import { ProjectAppConfiguration } from './entities/ProjectAppConfiguration.entity';
 import { Sms } from './entities/Sms.entity';
 import { isEmail } from 'class-validator';
+import { omit } from 'lodash';
+import { PhoneCode } from './entities/PhoneCode.entity';
 
 @Injectable()
 export class ProjectService {
@@ -97,10 +99,20 @@ export class ProjectService {
     return app;
   }
 
-  private associateUserToApp(appId: string, userId: string) {
-    const appUser = new AppUser();
-    appUser.appId = appId;
-    appUser.userId = userId;
+  private async associateUserToApp(appId: string, userId: string) {
+    // check that app is not already associated to project
+    let appUser = await this.dbSource.manager.findOne(AppUser, {
+      where: {
+        appId,
+        userId,
+      },
+    });
+
+    if (!appUser) {
+      appUser = new AppUser();
+      appUser.appId = appId;
+      appUser.userId = userId;
+    }
     return appUser;
   }
 
@@ -170,7 +182,7 @@ export class ProjectService {
       await transactionManager.save(newApp);
 
       // associate user to app
-      const appUser = this.associateUserToApp(newApp.id, userId);
+      const appUser = await this.associateUserToApp(newApp.id, userId);
       appUser.password = await this.getDefaultUserPassword();
 
       // generate app token
@@ -218,12 +230,12 @@ export class ProjectService {
     //   apiData,
     // };
 
-    const apiAccessToke = this.generateApiTokenForApp(
+    const apiAccessToken = this.generateApiTokenForApp(
       appId,
       app.name,
       dbManager,
     );
-    return apiAccessToke;
+    return apiAccessToken;
   }
 
   async generateApiTokenForApp(
@@ -245,10 +257,10 @@ export class ProjectService {
       apiData,
     };
 
-    const oneHourDefaultExpiry = '5000d';
-    const apiAccessTokenExpiry = Number(
-      this.getApiAccessTokenExpiry() || oneHourDefaultExpiry,
-    );
+    const oneHourDefaultExpiry = 60 * 60 * 24 * 5000; // '5000d'
+    const apiAccessTokenExpiry =
+      parseInt(this.getApiAccessTokenExpiry()) || oneHourDefaultExpiry;
+
     const appAccessToken = this.sharedService.signPayload(
       authPayload,
       apiAccessTokenExpiry,
@@ -284,7 +296,7 @@ export class ProjectService {
     const userEmail = signUpUserDto.email;
     const userPhone = signUpUserDto.phone;
     const userEmailIsValid = isEmail(userEmail || '');
-    if (!userEmailIsValid || userPhone) {
+    if (!userEmailIsValid || !(userPhone && signUpUserDto.phoneCode)) {
       throwBadRequest('Either email or phone is required');
     }
 
@@ -293,16 +305,36 @@ export class ProjectService {
       where: userEmailIsValid ? { email: userEmail } : { phone: userPhone },
     });
 
+    let isNewUser = false;
+    let userCreatedInApp = false;
     await dbManager.transaction(async (transactionManager) => {
       // if user exists, associate user to app
       const password = signUpUserDto.password;
       if (!user) {
         // if user does not exist, create user and associate user to app
-        user = transactionManager.create(User, signUpUserDto);
+        const phoneCode = !!userPhone
+          ? await dbManager.findOne(PhoneCode, {
+              where: {
+                name: signUpUserDto.phoneCode,
+              },
+            })
+          : null;
+
+        delete signUpUserDto.phoneCode;
+        user = transactionManager.create(User, {
+          ...omit(signUpUserDto, ['phoneCode']),
+          ...(phoneCode ? { phoneCodeId: phoneCode.id } : {}),
+        });
         // save user in db with transaction
         user = await transactionManager.save(user);
+        isNewUser = true;
       }
-      await this.createAppUser(appId, user.id, password, transactionManager);
+      userCreatedInApp = await this.createAppUser(
+        appId,
+        user.id,
+        password,
+        transactionManager,
+      );
 
       if (signUpUserDto.initiateVerificationRequest) {
         await this.registerVerificationRequest(appId, transactionManager, {
@@ -314,13 +346,25 @@ export class ProjectService {
 
     // * Remove password from user object
 
-    return this.getAuthResponse({ user, isVerified: false });
+    return this.getAuthResponse({
+      user,
+      isVerified: false,
+      isNewUser,
+      userCreatedInApp,
+    });
   }
 
   getAuthResponse({
     user,
     isVerified,
-  }: { user?: User; isVerified?: boolean } = {}) {
+    isNewUser,
+    userCreatedInApp,
+  }: {
+    user?: User;
+    isVerified?: boolean;
+    isNewUser?: boolean;
+    userCreatedInApp?: boolean;
+  } = {}) {
     return {
       ...(user
         ? this.sharedService.removeUnwantedFields<User>(user, [
@@ -330,6 +374,8 @@ export class ProjectService {
           ])
         : {}),
       isVerified,
+      isNewUser,
+      userCreatedInApp,
     } as AuthResponse;
   }
 
@@ -400,12 +446,19 @@ export class ProjectService {
     password?: string,
     transactionManager?: EntityManager,
   ) {
-    const dbManager = this.dbSource.manager;
-    const appUser = this.associateUserToApp(appId, userId);
-    appUser.password = password
-      ? await this.sharedService.hashPassword(password)
-      : await this.getDefaultUserPassword();
-    await (transactionManager || dbManager).save(appUser);
+    const dbManager = transactionManager || this.dbSource.manager;
+    let appUser = await this.associateUserToApp(appId, userId);
+    const userExistsInApp = !!appUser.id;
+
+    if (!userExistsInApp) {
+      appUser.password = password
+        ? await this.sharedService.hashPassword(password)
+        : await this.getDefaultUserPassword();
+      appUser = await dbManager.save(appUser);
+    }
+
+    const userCreated = !userExistsInApp;
+    return userCreated;
   }
 
   async registerVerificationRequest(
@@ -509,7 +562,7 @@ export class ProjectService {
           subject: 'Verify Email',
           html:
             authhVerificationType === AppVerificationType.CODE
-              ? `Please use this code to verify completer your verification: ${token}`
+              ? `Please use this code to complete your verification: ${token}`
               : `
         Kindly, click to verify your email. <a href="${tokenUrl}">Verify Email</a>. Or copy and paste this link in your browser ${tokenUrl}.
       `,
