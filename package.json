@@ -20,6 +20,7 @@
     "typeorm": "node --require ts-node/register ./node_modules/typeorm/cli.js",
     "orm:mig:gen": "sh -c 'npm run typeorm -- migration:generate src/config/database/migrations/$0 -d ./src/config/database/connections/default.ts'",
     "orm:mig:run": "sh -c 'npm run typeorm -- migration:run -d ./src/config/database/connections/default.ts'",
+    "orm:mig:create": "sh -c 'npm run typeorm -- migration:create src/config/database/migrations/$0'",
     "create:db:entity": "sh -c 'typeorm-ts-node-esm entity:create src/$0'",
     "create:db:subscriber": "sh -c 'typeorm-ts-node-esm subscriber:create src/$0'",
     "create:db:migrations": "sh -c 'typeorm-ts-node-esm migration:create src/config/database/migrations/$0'",
