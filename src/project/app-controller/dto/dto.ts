@@ -27,6 +27,10 @@ export class AppUserSignUpDto {
   @IsString()
   phone: string;
 
+  @IsOptional()
+  @IsString()
+  phoneCode: string;
+
   // TODO: replace with a custom password validator
   @IsNotEmpty()
   // @IsStrongPassword()

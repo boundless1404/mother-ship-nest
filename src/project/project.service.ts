@@ -27,6 +27,8 @@ import { Email } from 'src/shared/email.entity';
 import { ProjectAppConfiguration } from './entities/ProjectAppConfiguration.entity';
 import { Sms } from './entities/Sms.entity';
 import { isEmail } from 'class-validator';
+import { omit } from 'lodash';
+import { PhoneCode } from './entities/PhoneCode.entity';
 
 @Injectable()
 export class ProjectService {
@@ -294,7 +296,7 @@ export class ProjectService {
     const userEmail = signUpUserDto.email;
     const userPhone = signUpUserDto.phone;
     const userEmailIsValid = isEmail(userEmail || '');
-    if (!userEmailIsValid || userPhone) {
+    if (!userEmailIsValid || !(userPhone && signUpUserDto.phoneCode)) {
       throwBadRequest('Either email or phone is required');
     }
 
@@ -303,16 +305,36 @@ export class ProjectService {
       where: userEmailIsValid ? { email: userEmail } : { phone: userPhone },
     });
 
+    let isNewUser = false;
+    let userCreatedInApp = false;
     await dbManager.transaction(async (transactionManager) => {
       // if user exists, associate user to app
       const password = signUpUserDto.password;
       if (!user) {
         // if user does not exist, create user and associate user to app
-        user = transactionManager.create(User, signUpUserDto);
+        const phoneCode = !!userPhone
+          ? await dbManager.findOne(PhoneCode, {
+              where: {
+                name: signUpUserDto.phoneCode,
+              },
+            })
+          : null;
+
+        delete signUpUserDto.phoneCode;
+        user = transactionManager.create(User, {
+          ...omit(signUpUserDto, ['phoneCode']),
+          ...(phoneCode ? { phoneCodeId: phoneCode.id } : {}),
+        });
         // save user in db with transaction
         user = await transactionManager.save(user);
+        isNewUser = true;
       }
-      await this.createAppUser(appId, user.id, password, transactionManager);
+      userCreatedInApp = await this.createAppUser(
+        appId,
+        user.id,
+        password,
+        transactionManager,
+      );
 
       if (signUpUserDto.initiateVerificationRequest) {
         await this.registerVerificationRequest(appId, transactionManager, {
@@ -324,13 +346,25 @@ export class ProjectService {
 
     // * Remove password from user object
 
-    return this.getAuthResponse({ user, isVerified: false });
+    return this.getAuthResponse({
+      user,
+      isVerified: false,
+      isNewUser,
+      userCreatedInApp,
+    });
   }
 
   getAuthResponse({
     user,
     isVerified,
-  }: { user?: User; isVerified?: boolean } = {}) {
+    isNewUser,
+    userCreatedInApp,
+  }: {
+    user?: User;
+    isVerified?: boolean;
+    isNewUser?: boolean;
+    userCreatedInApp?: boolean;
+  } = {}) {
     return {
       ...(user
         ? this.sharedService.removeUnwantedFields<User>(user, [
@@ -340,6 +374,8 @@ export class ProjectService {
           ])
         : {}),
       isVerified,
+      isNewUser,
+      userCreatedInApp,
     } as AuthResponse;
   }
 
@@ -412,15 +448,17 @@ export class ProjectService {
   ) {
     const dbManager = transactionManager || this.dbSource.manager;
     let appUser = await this.associateUserToApp(appId, userId);
+    const userExistsInApp = !!appUser.id;
 
-    if (!appUser.id) {
+    if (!userExistsInApp) {
       appUser.password = password
         ? await this.sharedService.hashPassword(password)
         : await this.getDefaultUserPassword();
       appUser = await dbManager.save(appUser);
     }
 
-    return appUser;
+    const userCreated = !userExistsInApp;
+    return userCreated;
   }
 
   async registerVerificationRequest(
