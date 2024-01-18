@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { ProjectService } from '../project.service';
 import { AppUserSignInDto, AppUserSignUpDto } from './dto/dto';
 import { IsAuthenticated } from 'src/shared/isAuthenticated.guard';
@@ -9,6 +9,10 @@ import { AuthenticatedApiData } from 'src/lib/types';
 export class AppControllerController {
   constructor(private projectService: ProjectService) {
     //
+  }
+  @Get()
+  getHello(): string {
+    return 'Hello World!';
   }
 
   @Post('/user/sign-up')
