@@ -17,11 +17,11 @@ async function bootstrap() {
   const appConfig = getAppConfig();
   app.useGlobalInterceptors(new LoggerErrorInterceptor());
 
-  let logger: Logger | undefined = undefined;
-  if (appConfig.NODE_ENV === 'production') {
-    logger = app.get(Logger);
-    app.useLogger(logger);
-  }
+  // let logger: Logger | undefined = undefined;
+  // if (appConfig.NODE_ENV === 'production') {
+  //   logger = app.get(Logger);
+  //   app.useLogger(logger);
+  // }
 
   app.flushLogs();
 
@@ -47,8 +47,12 @@ async function bootstrap() {
     },
   );
 
-  const msg = `Application is running on: ${await app.getUrl()}`;
-  logger ? logger.log(msg) : console.log(msg);
+  // const msg = `Application is running on: ${await app.getUrl()}`;
+  // logger ? logger.log(msg) : console.log(msg);
 }
 
-bootstrap();
+try {
+  bootstrap();
+} catch (err) {
+  console.error('Error during bootstrap', err);
+}
