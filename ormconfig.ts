@@ -46,7 +46,7 @@ const defaultDataSourceOptions: TypeOrmDataSourceOptions = {
   extra: {
     max: databaseConfig.maxPoolConnCount,
     connectionTimeoutMillis: 10000,
-    idleTimeoutMillis: 10000,
+    idleTimeoutMillis: 1000,
     ssl: {
       rejectUnauthorized: false,
     },
