@@ -29,13 +29,14 @@ const validator = new ValidationPipe({
   whitelist: false,
   transform: true,
   exceptionFactory(errors) {
-    const formattedErrors = errors.reduce((prev, error) => {
-      if (!has(prev, error.property)) {
-        prev[error.property] = first(values(error.constraints || {}));
-      }
+    const formattedErrors = errors;
+    // .reduce((prev, error) => {
+    //   // if (!has(prev, error.property)) {
+    //   //   prev[error.property] = first(values(error.constraints || {}));
+    //   // }
 
-      return prev;
-    }, {} as Record<string, string>);
+    //   return prev;
+    // }, {} as Record<string, string>);
 
     return new BadRequestException(
       {

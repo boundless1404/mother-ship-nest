@@ -79,11 +79,43 @@ export interface BrevoSmtpEmail {
   to: { email: string }[];
   templateId?: number;
   htmlContent?: string;
+  textContent?: string;
   sender: { name: string; email: string };
   subject: string;
   params?: { [key: string]: string };
   attachment?: { url?: string; name?: string; content?: string }[];
 }
+
+export interface ZeptoMail {
+  from: {
+    address: string;
+    name?: string;
+  };
+  to: {
+    email_address: {
+      address: string;
+      name?: string;
+    };
+  }[];
+  subject: string;
+  htmlbody: string;
+}
+
+export type TermiiSmsBody = {
+  to: string;
+  sms: string;
+  media?: {
+    url: string;
+    caption: string;
+  };
+};
+
+export type TermiiSmsConfig = {
+  from: string;
+  type: string;
+  channel: string;
+  api_key: string;
+};
 
 export interface MTNSmsOptions {
   /**
