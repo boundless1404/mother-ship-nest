@@ -6,15 +6,18 @@ import { compare, hash } from 'bcrypt';
 // import { MAIL_API_KEY } from 'src/config/envs';
 import { Sms } from 'src/project/entities/Sms.entity';
 // import * as twilio from 'twilio';
-import { SibApiV3Sdk } from 'sib-api-v3-sdk';
+import SibApiV3Sdk from '@getbrevo/brevo';
 import {
-  BrevoSmtpEmail,
   MTNSmsOptions,
   MTNSmsResponse,
   MTNRegisterCallbackUrlOptions,
   AuthPayload,
+  ZeptoMail,
+  TermiiSmsBody,
+  TermiiSmsConfig,
 } from 'src/lib/types';
 import axios from 'axios';
+import { SendMailClient } from 'zeptomail';
 
 @Injectable()
 export class SharedService {
@@ -189,64 +192,93 @@ export class SharedService {
     }
   }
 
-  async sendBrevoEmail(sendSmtpEmail: BrevoSmtpEmail) {
+  async sendBrevoEmail(brevoEmail: SibApiV3Sdk.SendSmtpEmail) {
     const brevoApiKey = this.config.get('BREVO_API_KEY');
-    // const brevoApiUrl = 'https://api.brevo.com/v1';
-
-    const defaultClient = SibApiV3Sdk.ApiClient.instance;
-
-    // Configure API key authorization: api-key
-    const apiKey = defaultClient.authentications['api-key'];
-    apiKey.apiKey = brevoApiKey;
-
-    // Configure API key authorization: partner-key
-    const partnerKey = defaultClient.authentications['partner-key'];
-    partnerKey.apiKey = brevoApiKey;
-
-    const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+    const brevoApiUrl = 'https://api.sendinblue.com/v3';
+    const serverResponse = await axios.post(
+      `${brevoApiUrl}/smtp/email`,
+      brevoEmail,
+      {
+        headers: {
+          'api-key': brevoApiKey,
+        },
+      },
+    );
 
     try {
-      const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+      const data = serverResponse.data;
       return data;
     } catch (error) {
-      console.error(error);
+      Logger.log(error);
     }
   }
 
-  async sendBrevoBactchedEmail(email: string, templateId: number) {
-    const brevoApiKey = this.config.get('BREVO_API_KEY');
-    // const brevoApiUrl = 'https://api.brevo.com/v1';
+  async sendZeptoEmail(zeptoEmail: ZeptoMail) {
+    const url = 'zeptomail.zoho.com/';
+    const token = this.config.get('ZEPETO_API_KEY');
 
-    const defaultClient = SibApiV3Sdk.ApiClient.instance;
+    const client = new SendMailClient({ url, token });
 
-    // Configure API key authorization: api-key
-    const apiKey = defaultClient.authentications['api-key'];
-    apiKey.apiKey = brevoApiKey;
+    const response = await client.sendMail(zeptoEmail);
+    Logger.log(response);
+  }
 
-    // Configure API key authorization: partner-key
-    const partnerKey = defaultClient.authentications['partner-key'];
-    partnerKey.apiKey = brevoApiKey;
-
-    const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-
-    const batchSend = new SibApiV3Sdk.SendSmtpEmail();
-    batchSend.to = [{ email: email }];
-    batchSend.templateId = templateId;
-    batchSend.sender = { name: 'Sender Name', email: 'ender@example.com' };
-    batchSend.subject = 'Test email';
-    batchSend.params = {
-      // Add your template variables here
-      variable1: 'value1',
-      variable2: 'value2',
+  async sendTermiiSms(termiiSms: TermiiSmsBody) {
+    const termiiSmsConfig: TermiiSmsConfig = {
+      api_key: this.config.get('TERMII_API_KEY'),
+      from: this.config.get('TERMII_AUTH_SENDER_ID'),
+      channel: 'generic',
+      type: 'plain',
     };
 
-    try {
-      const data = await apiInstance.sendTransacEmail(batchSend);
-      console.log('API call successful. Returned data: ', JSON.stringify(data));
-    } catch (error) {
-      console.error(error);
-    }
+    const url = `${this.config.get('TERMII_API_URL')}/sms/send`;
+    const termiiServerResponse = await axios.post(
+      url,
+      { ...termiiSms, ...termiiSmsConfig },
+      {
+        headers: {
+          'Content-Type': ['application/json', 'application/json'],
+        },
+      },
+    );
+
+    Logger.log(termiiServerResponse);
   }
+
+  // async sendBrevoBactchedEmail(email: string, templateId: number) {
+  //   const brevoApiKey = this.config.get('BREVO_API_KEY');
+  //   // const brevoApiUrl = 'https://api.brevo.com/v1';
+
+  //   const defaultClient = SibApiV3Sdk.ApiClient.instance;
+
+  //   // Configure API key authorization: api-key
+  //   const apiKey = defaultClient.authentications['api-key'];
+  //   apiKey.apiKey = brevoApiKey;
+
+  //   // Configure API key authorization: partner-key
+  //   const partnerKey = defaultClient.authentications['partner-key'];
+  //   partnerKey.apiKey = brevoApiKey;
+
+  //   const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+
+  //   const batchSend = new SibApiV3Sdk.SendSmtpEmail();
+  //   batchSend.to = [{ email: email }];
+  //   batchSend.templateId = templateId;
+  //   batchSend.sender = { name: 'Sender Name', email: 'ender@example.com' };
+  //   batchSend.subject = 'Test email';
+  //   batchSend.params = {
+  //     // Add your template variables here
+  //     variable1: 'value1',
+  //     variable2: 'value2',
+  //   };
+
+  //   try {
+  //     const data = await apiInstance.sendTransacEmail(batchSend);
+  //     console.log('API call successful. Returned data: ', JSON.stringify(data));
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  // }
 
   removeUnwantedFields<T>(data: T, fields: (keyof T)[]) {
     const dataCopy = { ...data };
