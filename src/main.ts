@@ -44,8 +44,10 @@ async function bootstrap() {
     process.env.SERVER_PORT ||
     '3000';
 
-  await app.listen(port, () => {
-    NestLogger.log('', `app started on port ${port}`);
+  const host = process.env.SERVER_HOST;
+
+  await app.listen(port, host, () => {
+    NestLogger.log(host, `app started on port ${port}`);
     const httpServer = app.getHttpServer();
 
     // Get the router instance from the HTTP server
