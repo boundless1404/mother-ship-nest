@@ -295,8 +295,9 @@ export class ProjectService {
 
     const userEmail = signUpUserDto.email;
     const userPhone = signUpUserDto.phone;
+    const userPhoneCode = signUpUserDto.phoneCode;
     const userEmailIsValid = isEmail(userEmail || '');
-    if (!userEmailIsValid || !(userPhone && signUpUserDto.phoneCode)) {
+    if (!userEmailIsValid && !userPhone) {
       throwBadRequest('Either email or phone is required');
     }
 
@@ -319,7 +320,9 @@ export class ProjectService {
               },
             })
           : null;
-
+          if ( userPhone && !userPhoneCode) {
+            throwBadRequest(' phone code is required along with phone number');
+          }
         delete signUpUserDto.phoneCode;
         user = transactionManager.create(User, {
           ...omit(signUpUserDto, ['phoneCode']),
