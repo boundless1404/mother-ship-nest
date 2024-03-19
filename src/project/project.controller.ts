@@ -108,12 +108,12 @@ export class ProjectController {
     @GetAuthPayload('apiData') apiData: AuthenticatedApiData,
   ) {
     const { email, token, tokenPurpose } = query;
-    const authResponse = await this.projectService.completeAppUserVerification(
-      apiData,
+    const authResponse = await this.projectService.completeAppUserVerification({
+      appId: apiData.appId,
       email,
       token,
       tokenPurpose,
-    );
+    });
     return authResponse;
   }
 }

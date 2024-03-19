@@ -20,7 +20,7 @@ if (databaseConfig.url) {
 }
 
 const defaultDataSourceOptions: TypeOrmDataSourceOptions = {
-  applicationName: 'Goodtalent Payroll',
+  applicationName: 'mother-ship-nest',
   name: 'default',
   type: 'postgres',
   ...omit(databaseConfig, ['maxPoolConnCount']),
@@ -35,7 +35,7 @@ const defaultDataSourceOptions: TypeOrmDataSourceOptions = {
   migrationsRun: false,
   migrationsTableName: 'migrations',
   useUTC: true,
-  connectTimeoutMS: 10000,
+  connectTimeoutMS: 30000,
   dropSchema: false,
   migrationsTransactionMode: 'all',
   metadataTableName: 'typeorm_metadata',
@@ -47,9 +47,9 @@ const defaultDataSourceOptions: TypeOrmDataSourceOptions = {
     max: databaseConfig.maxPoolConnCount,
     connectionTimeoutMillis: 10000,
     idleTimeoutMillis: 10000,
-    // ssl: {
-    //   rejectUnauthorized: false,
-    // },
+    ssl: {
+      rejectUnauthorized: false,
+    },
   },
   cache: {
     type: 'database',

@@ -15,7 +15,7 @@ import AppUser from '../../project/entities/AppUser.entity';
 import { ProjectUser } from '../../project/entities/ProjectUser.entity';
 import { ProjectUserPassword } from '../../project/entities/ProjectUserPassword.entity';
 import { Token } from '../../project/entities/Token.entity';
-import { PhoneCode } from 'src/project/entities/PhoneCode.entity';
+import { PhoneCode } from '../../project/entities/PhoneCode.entity';
 
 @Entity()
 export class User {
