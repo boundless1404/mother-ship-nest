@@ -17,11 +17,11 @@ async function bootstrap() {
   const appConfig = getAppConfig();
   app.useGlobalInterceptors(new LoggerErrorInterceptor());
 
-  let logger: Logger | undefined = undefined;
-  if (appConfig.NODE_ENV === 'production') {
-    logger = app.get(Logger);
-    app.useLogger(logger);
-  }
+  // let logger: Logger | undefined = undefined;
+  // if (appConfig.NODE_ENV === 'production') {
+  //   logger = app.get(Logger);
+  //   app.useLogger(logger);
+  // }
 
   app.flushLogs();
 
@@ -38,17 +38,43 @@ async function bootstrap() {
   });
 
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
+  const port =
+    process.env.PORT ||
+    process.env.HTTP_PORT ||
+    process.env.SERVER_PORT ||
+    '3000';
 
-  await app.listen(
-    process.env.PORT || process.env.SERVER_PORT || '3000',
-    process.env.HOST || process.env.SERVER_HOST || '0.0.0.0',
-    () => {
-      NestLogger.log`Listening...`;
-    },
-  );
+  const host = process.env.SERVER_HOST;
+
+  await app.listen(port, host, () => {
+    NestLogger.log(host, `app started on port ${port}`);
+    const httpServer = app.getHttpServer();
+
+    // Get the router instance from the HTTP server
+    const router = httpServer._events.request._router;
+
+    const availableRoutes: [] = router.stack
+      .map((layer) => {
+        if (layer.route) {
+          return {
+            route: {
+              path: layer.route?.path,
+              method: layer.route?.stack[0].method,
+            },
+          };
+        }
+      })
+      .filter((item) => item !== undefined);
+    NestLogger.log(availableRoutes, 'Available routes');
+  });
 
   const msg = `Application is running on: ${await app.getUrl()}`;
-  logger ? logger.log(msg) : console.log(msg);
+  // logger ? logger.log(msg) : console.log(msg);
+  console.log(msg);
 }
 
-bootstrap();
+try {
+  bootstrap();
+} catch (err) {
+  console.error('Error during bootstrap', err);
+}

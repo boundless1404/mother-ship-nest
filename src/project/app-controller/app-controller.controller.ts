@@ -1,14 +1,19 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ProjectService } from '../project.service';
 import { AppUserSignInDto, AppUserSignUpDto } from './dto/dto';
 import { IsAuthenticated } from 'src/shared/isAuthenticated.guard';
 import { GetAuthPayload } from 'src/shared/getAuthenticatedUserPayload.decorator';
 import { AuthenticatedApiData } from 'src/lib/types';
+import { TokenCreationPurpose } from 'src/lib/enums';
 
 @Controller('app')
 export class AppControllerController {
   constructor(private projectService: ProjectService) {
     //
+  }
+  @Get()
+  getHello(): string {
+    return 'Hello World!';
   }
 
   @Post('/user/sign-up')
@@ -29,5 +34,21 @@ export class AppControllerController {
   ) {
     const token = await this.projectService.signUserInApp(apiData, signInDto);
     return { token };
+  }
+
+  @Get('/verify')
+  async verifyToken(
+    @Query()
+    query: {
+      appUserId: string;
+      token: string;
+    },
+  ) {
+    const { appUserId, token } = query;
+    const authResponse = await this.projectService.verifyToken({
+      appUserId,
+      token,
+    });
+    return authResponse;
   }
 }
