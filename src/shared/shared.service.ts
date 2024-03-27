@@ -215,7 +215,7 @@ export class SharedService {
 
   async sendZeptoEmail(zeptoEmail: ZeptoMail) {
     const url = 'zeptomail.zoho.com/';
-    const token = this.config.get('ZEPETO_API_KEY');
+    const token = this.config.get('ZEPTO_API_KEY');
 
     const client = new SendMailClient({ url, token });
 

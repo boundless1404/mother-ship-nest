@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class Sh1710867115886 implements MigrationInterface {
-    name = 'Sh1710867115886'
+export class Sh1711400315221 implements MigrationInterface {
+    name = 'Sh1711400315221'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TABLE "email" ("id" BIGSERIAL NOT NULL, "priority" "public"."email_priority_enum" NOT NULL DEFAULT 'regular', "attachmentFileUrls" jsonb, "body" json NOT NULL, "sendAt" TIMESTAMP WITH TIME ZONE, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, CONSTRAINT "PK_1e7ed8734ee054ef18002e29b1c" PRIMARY KEY ("id"))`);
