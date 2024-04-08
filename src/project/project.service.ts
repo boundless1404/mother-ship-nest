@@ -577,18 +577,18 @@ export class ProjectService {
         email.priority = EmailPriority.IMMEDIATE;
 
         await transactionManager.save(email);
-        await this.sharedService.sendZeptoEmail({
-          to: [
-            {
-              email_address: {
-                address: msg.to,
-              },
-            },
-          ],
-          from: { address: msg.from, name: 'MotherShip' },
-          subject: msg.subject,
-          htmlbody: msg.html,
-        });
+        // await this.sharedService.sendZeptoEmail({
+        //   to: [
+        //     {
+        //       email_address: {
+        //         address: msg.to,
+        //       },
+        //     },
+        //   ],
+        //   from: { address: msg.from, name: 'MotherShip' },
+        //   subject: msg.subject,
+        //   htmlbody: msg.html,
+        // });
       } else {
         // * Register sms content in db to send later
         const sms = new Sms();
@@ -603,10 +603,10 @@ export class ProjectService {
         sms.sender = app.name;
 
         await transactionManager.save(sms);
-        await this.sharedService.sendTermiiSms({
-          to: sms.to,
-          sms: sms.content,
-        });
+        // await this.sharedService.sendTermiiSms({
+        //   to: sms.to,
+        //   sms: sms.content,
+        // });
       }
     });
   }
