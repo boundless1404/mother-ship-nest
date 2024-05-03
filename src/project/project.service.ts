@@ -577,18 +577,18 @@ export class ProjectService {
         email.priority = EmailPriority.IMMEDIATE;
 
         await transactionManager.save(email);
-        // await this.sharedService.sendZeptoEmail({
-        //   to: [
-        //     {
-        //       email_address: {
-        //         address: msg.to,
-        //       },
-        //     },
-        //   ],
-        //   from: { address: msg.from, name: 'MotherShip' },
-        //   subject: msg.subject,
-        //   htmlbody: msg.html,
-        // });
+        await this.sharedService.sendZeptoEmail({
+          to: [
+            {
+              email_address: {
+                address: msg.to,
+              },
+            },
+          ],
+          from: { address: msg.from, name: 'MotherShip' },
+          subject: msg.subject,
+          htmlbody: msg.html,
+        });
       } else {
         // * Register sms content in db to send later
         const sms = new Sms();
@@ -603,10 +603,10 @@ export class ProjectService {
         sms.sender = app.name;
 
         await transactionManager.save(sms);
-        // await this.sharedService.sendTermiiSms({
-        //   to: sms.to,
-        //   sms: sms.content,
-        // });
+        await this.sharedService.sendTermiiSms({
+          to: sms.to,
+          sms: sms.content,
+        });
       }
     });
   }
@@ -663,16 +663,18 @@ export class ProjectService {
           where: {
             id: appUserId,
             app: {
-              token: {
+              tokens: {
                 valueOfToken: token,
               },
             },
           },
           relations: {
             app: {
-              token: true,
+              tokens: true,
             },
-            user: true,
+            user: {
+              phoneCode: true,
+            },
           },
         })
       : dbManager.findOne(AppUser, {
@@ -686,9 +688,11 @@ export class ProjectService {
           },
           relations: {
             app: {
-              token: true,
+              tokens: true,
             },
-            user: true,
+            user: {
+              phoneCode: true,
+            },
           },
         }));
 
@@ -711,11 +715,14 @@ export class ProjectService {
       await transactionManager.save(appUser);
 
       //  * Delete token from db
-      await dbManager.delete(Token, { id: appUser.app.token.id });
+      await dbManager.delete(Token, {
+        valueOfToken: token,
+      });
     });
 
     return this.getAuthResponse({
       isVerified: appUser.isVerified,
+      user: appUser.user,
     });
   }
 }

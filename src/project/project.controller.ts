@@ -100,10 +100,27 @@ export class ProjectController {
   }
 
   // * complete verification
-  @Get('/complete-verification')
+  @Get('/app/complete-verification')
+  @UseGuards(new IsAuthenticated({ isApiAccess: true }))
+  async completeVerificationFromLink(
+    @Query()
+    query: { email: string; token: string; tokenPurpose: TokenCreationPurpose },
+    @GetAuthPayload('apiData') apiData: AuthenticatedApiData,
+  ) {
+    const { email, token, tokenPurpose } = query;
+    const authResponse = await this.projectService.completeAppUserVerification({
+      appId: apiData.appId,
+      email,
+      token,
+      tokenPurpose,
+    });
+    return authResponse;
+  }
+
+  @Post('/app/complete-verification')
   @UseGuards(new IsAuthenticated({ isApiAccess: true }))
   async completeVerification(
-    @Query()
+    @Body()
     query: { email: string; token: string; tokenPurpose: TokenCreationPurpose },
     @GetAuthPayload('apiData') apiData: AuthenticatedApiData,
   ) {

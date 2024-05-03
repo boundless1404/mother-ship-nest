@@ -75,7 +75,7 @@ export class Token {
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @ManyToOne(() => App, (app) => app.token)
+  @ManyToOne(() => App, (app) => app.tokens)
   @JoinColumn({ name: 'appId' })
   app: App;
 }

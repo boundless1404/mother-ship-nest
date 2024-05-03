@@ -37,7 +37,7 @@ export default class App {
   appUsers: AppUser[];
 
   @OneToMany(() => Token, (token) => token.app)
-  token: Token;
+  tokens: Token[];
 
   @OneToOne(
     () => ProjectAppConfiguration,
