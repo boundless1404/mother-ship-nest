@@ -663,16 +663,18 @@ export class ProjectService {
           where: {
             id: appUserId,
             app: {
-              token: {
+              tokens: {
                 valueOfToken: token,
               },
             },
           },
           relations: {
             app: {
-              token: true,
+              tokens: true,
             },
-            user: true,
+            user: {
+              phoneCode: true,
+            },
           },
         })
       : dbManager.findOne(AppUser, {
@@ -686,9 +688,11 @@ export class ProjectService {
           },
           relations: {
             app: {
-              token: true,
+              tokens: true,
             },
-            user: true,
+            user: {
+              phoneCode: true,
+            },
           },
         }));
 
@@ -711,11 +715,14 @@ export class ProjectService {
       await transactionManager.save(appUser);
 
       //  * Delete token from db
-      await dbManager.delete(Token, { id: appUser.app.token.id });
+      await dbManager.delete(Token, {
+        valueOfToken: token,
+      });
     });
 
     return this.getAuthResponse({
       isVerified: appUser.isVerified,
+      user: appUser.user,
     });
   }
 }
