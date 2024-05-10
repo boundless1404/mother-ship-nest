@@ -116,4 +116,19 @@ export class ProjectController {
     });
     return authResponse;
   }
+
+  @Post('/app/resend-token-verification')
+  async resendVerificationToken(
+    @Body() resendTokenDto: ResendTokenDto,
+    @GetAuthPayload('apiData') apiData: AuthenticatedApiData,
+  ) {
+    const authResponse = await this.projectService.resendToken(
+      resendTokenDto,
+      apiData,
+    );
+    return {
+      message: 'Verification token resent successfully.',
+      authResponse,
+    };
+  }
 }
