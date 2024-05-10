@@ -16,7 +16,11 @@ import {
   AuthenticatedUserData,
 } from 'src/lib/types';
 import { CreateAppDto, CreateProjectDto } from './dto/dto';
-import { AppUserSignInDto, AppUserSignUpDto } from './app-controller/dto/dto';
+import {
+  AppUserSignInDto,
+  AppUserSignUpDto,
+  ResendTokenDto,
+} from './app-controller/dto/dto';
 import { TokenCreationPurpose } from 'src/lib/enums';
 // import { Token } from './entities/Token.entity';
 
@@ -132,5 +136,22 @@ export class ProjectController {
       tokenPurpose,
     });
     return authResponse;
+  }
+
+  // * resend token sign user up in app
+
+  @Post('/app/resend-token-verification')
+  async resendVerificationToken(
+    @Body() resendTokenDto: ResendTokenDto,
+    @GetAuthPayload('apiData') apiData: AuthenticatedApiData,
+  ) {
+    const authResponse = await this.projectService.resendToken(
+      resendTokenDto,
+      apiData,
+    );
+    return {
+      message: 'Verification token resent successfully.',
+      authResponse,
+    };
   }
 }

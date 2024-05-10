@@ -32,8 +32,10 @@ export class AppUserSignUpDto {
   phoneCode: string;
 
   // TODO: replace with a custom password validator
-  @IsNotEmpty()
+  //@IsNotEmpty()
   // @IsStrongPassword()
+  //@IsOptional()
+  @IsNotEmpty()
   password: string;
 
   @IsOptional()
@@ -53,4 +55,10 @@ export class AppUserSignInDto {
   @IsNotEmpty()
   @IsString()
   password: string;
+}
+
+export class ResendTokenDto {
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
 }

@@ -4,8 +4,6 @@ import { AppUserSignInDto, AppUserSignUpDto } from './dto/dto';
 import { IsAuthenticated } from 'src/shared/isAuthenticated.guard';
 import { GetAuthPayload } from 'src/shared/getAuthenticatedUserPayload.decorator';
 import { AuthenticatedApiData } from 'src/lib/types';
-import { TokenCreationPurpose } from 'src/lib/enums';
-
 @Controller('app')
 export class AppControllerController {
   constructor(private projectService: ProjectService) {
