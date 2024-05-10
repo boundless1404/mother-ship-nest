@@ -54,3 +54,9 @@ export class AppUserSignInDto {
   @IsString()
   password: string;
 }
+
+export class ResendTokenDto {
+  @IsOptional()
+  @IsEmail()
+  email: string;
+}

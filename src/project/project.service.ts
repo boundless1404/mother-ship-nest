@@ -13,7 +13,11 @@ import App from './entities/App.entity';
 import AppUser from './entities/AppUser.entity';
 import { ConfigService } from '@nestjs/config';
 import { SharedService } from 'src/shared/shared.service';
-import { AppUserSignInDto, AppUserSignUpDto } from './app-controller/dto/dto';
+import {
+  AppUserSignInDto,
+  AppUserSignUpDto,
+  ResendTokenDto,
+} from './app-controller/dto/dto';
 import { Token } from './entities/Token.entity';
 import {
   AppVerificationPivot,
@@ -716,5 +720,83 @@ export class ProjectService {
     return this.getAuthResponse({
       isVerified: appUser.isVerified,
     });
+  }
+  async resendToken(
+    resendTokenDto: ResendTokenDto,
+    appData: AuthenticatedApiData,
+  ) {
+    const { email } = resendTokenDto;
+    const appId: string = appData.appId;
+
+    const dbManager = this.dbSource.manager;
+    const user = await dbManager.findOne(User, { where: { email } });
+
+    if (!user) {
+      throwBadRequest('User not found.');
+    }
+
+    // Check if the user has an existing verification token
+    const existingToken = await dbManager.findOne(Token, {
+      where: { userId: user.id, purpose: TokenCreationPurpose.SIGN_UP },
+    });
+
+    if (existingToken) {
+      // Token already exists, no need to resend
+      throwBadRequest('Token already exists for this user.');
+    }
+
+    // Handle resend token functionality
+    const tokenExpiry = 24 * 60 * 60 * 1000; // 24 hours
+    const verificationTokenCount = 6;
+    const tokenCode = this.generateTokenCode(verificationTokenCount);
+
+    // Create a new token object
+    const token = this.createTokenObject(
+      tokenCode,
+      TokenCreationPurpose.SIGN_UP,
+      tokenExpiry,
+    );
+    token.userId = user.id;
+    token.appId = appId;
+
+    // Save token in db
+    await dbManager.save(token);
+
+    // Send the new token via email or SMS
+    if (user.email) {
+      // Send email logic
+      const mailSenderAccount = this.configService.get('MAIL_SENDER_ACCOUNT');
+      const msg = {
+        to: user.email,
+        from: mailSenderAccount,
+        subject: 'Resend Verification Token',
+        html: `Your new verification token is: ${tokenCode}`,
+      };
+      // Save email in db to send later
+      const email = new Email();
+      email.body = msg;
+      email.priority = EmailPriority.IMMEDIATE;
+      await dbManager.save(email);
+      // Send email
+      await this.sharedService.sendZeptoEmail({
+        to: [{ email_address: { address: msg.to } }],
+        from: { address: msg.from, name: 'MotherShip' },
+        subject: msg.subject,
+        htmlbody: msg.html,
+      });
+    } else if (user.phone) {
+      // Send SMS logic
+      const sms = new Sms();
+      sms.to = user.phone;
+      sms.content = `Your new verification token is: ${tokenCode}`;
+      sms.sender = 'YourSender';
+      // Save SMS in db to send later
+      await dbManager.save(sms);
+      // Send SMS
+      await this.sharedService.sendTermiiSms({
+        to: sms.to,
+        sms: sms.content,
+      });
+    }
   }
 }

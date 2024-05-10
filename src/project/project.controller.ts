@@ -16,7 +16,11 @@ import {
   AuthenticatedUserData,
 } from 'src/lib/types';
 import { CreateAppDto, CreateProjectDto } from './dto/dto';
-import { AppUserSignInDto, AppUserSignUpDto } from './app-controller/dto/dto';
+import {
+  AppUserSignInDto,
+  AppUserSignUpDto,
+  ResendTokenDto,
+} from './app-controller/dto/dto';
 import { TokenCreationPurpose } from 'src/lib/enums';
 // import { Token } from './entities/Token.entity';
 
