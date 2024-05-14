@@ -138,8 +138,6 @@ export class ProjectController {
     return authResponse;
   }
 
-  // * resend token sign user up in app
-
   @Post('/app/resend-token-verification')
   async resendVerificationToken(
     @Body() resendTokenDto: ResendTokenDto,
