@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Validate,
 } from 'class-validator';
 
 export class AppUserSignUpDto {
@@ -58,7 +59,19 @@ export class AppUserSignInDto {
 }
 
 export class ResendTokenDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsEmail()
   email: string;
+
+  @IsOptional()
+  @IsString()
+  @Validate((value, args) => {
+    const [expectedValue] = args.constraints;
+    return !!expectedValue;
+  })
+  phoneCode: string;
+
+  @IsOptional()
+  @IsString()
+  phone: string;
 }

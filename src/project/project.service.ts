@@ -31,6 +31,7 @@ import { Sms } from './entities/Sms.entity';
 import { isEmail } from 'class-validator';
 import { omit } from 'lodash';
 import { PhoneCode } from './entities/PhoneCode.entity';
+import { DEFAULT_TOKEN_EXPIRY } from 'src/lib/projectConstants';
 
 @Injectable()
 export class ProjectService {
@@ -232,7 +233,7 @@ export class ProjectService {
     //   apiData,
     // };
 
-    const apiAccessToken = this.generateApiTokenForApp(
+    const apiAccessToken = await this.generateApiTokenForApp(
       appId,
       app.name,
       dbManager,
@@ -529,10 +530,10 @@ export class ProjectService {
     const appUserId = appUser.id;
 
     // generate token to send to user along with link
-    const tokenExpiry = 24 * 60 * 60 * 1000; // 24 hours
+
+    const tokenExpiry = DEFAULT_TOKEN_EXPIRY;
     const verificationTokenCount =
       projectAppConfiguration?.verificationTokenCount || 6;
-    // TODO: write function to generate token code based on verificationTokenCount
     const tokenCode = this.generateTokenCode(verificationTokenCount);
 
     // * Start transaction
@@ -543,7 +544,7 @@ export class ProjectService {
         TokenCreationPurpose.SIGN_UP,
         tokenExpiry,
       );
-      token.appId = appId;
+      token.appUserId = appUserId;
 
       // save token in db
       await transactionManager.save(token);
@@ -738,13 +739,33 @@ export class ProjectService {
     const appId: string = appData.appId;
 
     const dbManager = this.dbSource.manager;
-    const user = await dbManager.findOne(User, { where: { email } });
+    const appUser = await dbManager.findOne(AppUser, {
+      where: {
+        appId,
+        user: {
+          email,
+        },
+      },
+      relations: {
+        user: true,
+      },
+    });
 
-    if (!user) {
+    if (!appUser) {
       throwBadRequest('User not found.');
     }
+    const user = appUser.user;
 
-    const tokenExpiry = 24 * 60 * 60 * 1000;
+    // Check if the user has an existing verification token
+    const existingToken = await dbManager.findOne(Token, {
+      where: { appUserId: appUser.id, purpose: TokenCreationPurpose.SIGN_UP },
+    });
+
+    if (existingToken) {
+      await dbManager.delete(Token, { id: existingToken.id });
+    }
+
+    const tokenExpiry = DEFAULT_TOKEN_EXPIRY;
     const verificationTokenCount = 6;
     const tokenCode = this.generateTokenCode(verificationTokenCount);
     const token = this.createTokenObject(
@@ -752,17 +773,7 @@ export class ProjectService {
       TokenCreationPurpose.SIGN_UP,
       tokenExpiry,
     );
-    token.userId = user.id;
-    token.appId = appId;
-
-    // Check if the user has an existing verification token
-    const existingToken = await dbManager.findOne(Token, {
-      where: { userId: user.id, purpose: TokenCreationPurpose.SIGN_UP },
-    });
-
-    if (existingToken) {
-      await dbManager.delete(Token, { id: existingToken.id });
-    }
+    token.appUserId = appUser.id;
 
     await dbManager.save(token);
 
@@ -780,6 +791,7 @@ export class ProjectService {
       email.priority = EmailPriority.IMMEDIATE;
       await dbManager.save(email);
 
+      // TODO: activate background job for mail sending
       await this.sharedService.sendZeptoEmail({
         to: [{ email_address: { address: msg.to } }],
         from: { address: msg.from, name: 'MotherShip' },
