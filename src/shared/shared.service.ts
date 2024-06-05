@@ -213,11 +213,16 @@ export class SharedService {
     }
   }
 
-  async sendZeptoEmail(zeptoEmail: ZeptoMail) {
+  async sendZeptoEmail(zeptoEmail: ZeptoMail | ZeptoMail[]) {
     const url = 'zeptomail.zoho.com/';
     const token = this.config.get('ZEPETO_API_KEY');
 
     const client = new SendMailClient({ url, token });
+    if (Array.isArray(zeptoEmail)) {
+      await Promise.allSettled(
+        zeptoEmail.map(async (mail) => await client.sendMail(mail)),
+      );
+    }
 
     const response = await client.sendMail(zeptoEmail);
     Logger.log(response);

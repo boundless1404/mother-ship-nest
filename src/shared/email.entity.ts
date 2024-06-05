@@ -31,6 +31,9 @@ export class Email {
   @Column({ type: 'json' })
   body: MailDataRequired;
 
+  @Column({ type: 'integer', nullable: true })
+  retryCount: number;
+
   @Column({ type: 'timestamptz', nullable: true })
   sendAt?: Date;
 
