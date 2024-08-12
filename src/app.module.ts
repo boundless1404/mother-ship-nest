@@ -21,6 +21,7 @@ import { AuthModule } from './auth/auth.module';
 import { SharedModule } from './shared/shared.module';
 import { ExtractTokenMiddleWare } from './shared/extractToken.middleware';
 import { ProjectModule } from './project/project.module';
+import { WalletModule } from './wallet/wallet.module';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const cors = require('cors');
@@ -108,6 +109,7 @@ const validator = new ValidationPipe({
     AuthModule,
     SharedModule,
     ProjectModule,
+    WalletModule,
   ],
   providers: [
     {

@@ -1,6 +1,18 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ProjectService } from '../project.service';
-import { AppUserSignInDto, AppUserSignUpDto } from './dto/dto';
+import {
+  AppUserSignInDto,
+  AppUserSignUpDto,
+  UpdateAppUserDataDto,
+} from './dto/dto';
 import { IsAuthenticated } from 'src/shared/isAuthenticated.guard';
 import { GetAuthPayload } from 'src/shared/getAuthenticatedUserPayload.decorator';
 import { AuthenticatedApiData } from 'src/lib/types';
@@ -30,8 +42,23 @@ export class AppControllerController {
     @Body() signInDto: AppUserSignInDto,
     @GetAuthPayload('apiData') apiData: AuthenticatedApiData,
   ) {
-    const token = await this.projectService.signUserInApp(apiData, signInDto);
-    return { token };
+    const authResponse = await this.projectService.signUserInApp(
+      apiData,
+      signInDto,
+    );
+    return { authResponse };
+  }
+
+  @Put('/user')
+  @UseGuards(IsAuthenticated)
+  async updateAppUserData(
+    @Body() updateAppUser: UpdateAppUserDataDto,
+    @GetAuthPayload('apiData') apiData: AuthenticatedApiData,
+  ) {
+    await this.projectService.updateAppUserData({
+      updateAppUserData: updateAppUser,
+      apiData,
+    });
   }
 
   @Get('/verify')

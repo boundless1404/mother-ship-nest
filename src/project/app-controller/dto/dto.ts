@@ -2,6 +2,7 @@ import {
   IsBoolean,
   IsEmail,
   IsNotEmpty,
+  IsNumberString,
   IsOptional,
   IsString,
   Validate,
@@ -56,6 +57,32 @@ export class AppUserSignInDto {
   @IsNotEmpty()
   @IsString()
   password: string;
+}
+
+export class UpdateAppUserDataDto {
+  @IsNotEmpty()
+  @IsString()
+  email: string;
+  
+  @IsOptional()
+  @IsString()
+  firstName: string;
+
+  @IsOptional()
+  @IsString()
+  lastName: string;
+
+  @IsOptional()
+  @IsString()
+  phone: string;
+
+  @IsOptional()
+  @IsString()
+  phoneCode: string;
+
+  @IsOptional()
+  @IsNumberString()
+  phoneCodeId: string;
 }
 
 export class ResendTokenDto {

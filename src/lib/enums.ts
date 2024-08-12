@@ -31,3 +31,21 @@ export enum AppVerificationPivot {
   PHONE = 'phone',
   AUTHENTICATIOR_APP = 'authenticator_app',
 }
+
+export enum Wallet_Status {
+  ACTIVE = 'active',
+  BLOCKED = 'recycled',
+  INACTIVE = 'inactive',
+}
+
+export enum Wallet_Transaction_Type {
+  CREDIT = 'credit',
+  DEBIT = 'debit',
+}
+
+export enum Credit_Source_Type {
+WALLET = 'wallet',
+BANK = 'bank',
+MOBILE_MONEY = 'mobile_money',
+CARD = 'card'
+}

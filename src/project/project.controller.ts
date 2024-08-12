@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -20,6 +21,7 @@ import {
   AppUserSignInDto,
   AppUserSignUpDto,
   ResendTokenDto,
+  UpdateAppUserDataDto,
 } from './app-controller/dto/dto';
 import { TokenCreationPurpose } from 'src/lib/enums';
 // import { Token } from './entities/Token.entity';
@@ -101,6 +103,18 @@ export class ProjectController {
       signInDto,
     );
     return authResponse;
+  }
+
+  @Put('/app/user')
+  @UseGuards(IsAuthenticated)
+  async updateAppUserData(
+    @Body() updateAppUser: UpdateAppUserDataDto,
+    @GetAuthPayload('apiData') apiData: AuthenticatedApiData,
+  ) {
+    await this.projectService.updateAppUserData({
+      updateAppUserData: updateAppUser,
+      apiData,
+    });
   }
 
   // * complete verification

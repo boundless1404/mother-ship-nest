@@ -17,6 +17,7 @@ import {
   AppUserSignInDto,
   AppUserSignUpDto,
   ResendTokenDto,
+  UpdateAppUserDataDto,
 } from './app-controller/dto/dto';
 import { Token } from './entities/Token.entity';
 import {
@@ -389,6 +390,7 @@ export class ProjectService {
       userCreatedInApp,
     } as AuthResponse;
   }
+
   async signUserInApp(
     apiData: AuthenticatedApiData,
     signInUserDto: AppUserSignInDto,
@@ -469,6 +471,102 @@ export class ProjectService {
 
     const userCreated = !userExistsInApp;
     return userCreated;
+  }
+
+  async updateAppUserData({
+    updateAppUserData,
+    apiData,
+  }: {
+    updateAppUserData: UpdateAppUserDataDto;
+    apiData: AuthenticatedApiData;
+  }) {
+    // set the dbManager
+    const dbManager = this.dbSource.manager;
+
+    // validate app data
+    await this.validateApp({ apiData, dbManager });
+
+    // find referenced user
+    let user = await this.getUser({
+      email: updateAppUserData.email,
+      appId: apiData.appId,
+      dbManager,
+    });
+
+    // update user data
+    user = this.updateUserDataProps(updateAppUserData, user);
+
+    // save user
+    await dbManager.save(user);
+  }
+
+  updateUserDataProps(updateAppUserData: UpdateAppUserDataDto, user: User) {
+    for (const prop in updateAppUserData) {
+      const propVal = updateAppUserData[prop];
+      if (propVal && prop in user) {
+        user[prop] = propVal;
+      }
+    }
+
+    return user;
+  }
+
+  /**
+   * Gets user data with the following object type: email: string, appId: string, dbManager: EntityManager. It throws an error for invalid params.
+   * @param email: string, appId: string, dbManager: EntityManager
+   * @returns user data of  type User
+   */
+  async getUser({
+    email,
+    appId,
+    dbManager,
+  }: {
+    email: string;
+    dbManager: EntityManager;
+    appId: string;
+  }) {
+    const referencedUser = await dbManager.findOne(AppUser, {
+      where: {
+        appId,
+        user: {
+          email,
+        },
+      },
+      relations: {
+        user: true,
+      },
+    });
+
+    if (!referencedUser) {
+      throwBadRequest('Invalid request param: invalid user data');
+      return;
+    }
+
+    return referencedUser.user;
+  }
+
+  async validateApp({
+    apiData,
+    appId,
+    dbManager = this.dbSource.manager,
+  }: {
+    apiData?: AuthenticatedApiData;
+    appId?: string;
+    dbManager?: EntityManager;
+  }) {
+    appId = apiData?.appId || appId;
+
+    if (!appId) {
+      throwForbidden('Invalid App access.');
+    }
+    // check if app exists
+    const app = await dbManager.findOne(App, {
+      where: { id: appId },
+    });
+
+    if (!app) {
+      throwBadRequest('App does not exist');
+    }
   }
 
   async registerVerificationRequest(
@@ -731,6 +829,7 @@ export class ProjectService {
       user: appUser.user,
     });
   }
+
   async resendToken(
     resendTokenDto: ResendTokenDto,
     appData: AuthenticatedApiData,
