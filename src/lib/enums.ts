@@ -44,8 +44,8 @@ export enum Wallet_Transaction_Type {
 }
 
 export enum Credit_Source_Type {
-WALLET = 'wallet',
-BANK = 'bank',
-MOBILE_MONEY = 'mobile_money',
-CARD = 'card'
+  WALLET = 'wallet',
+  BANK = 'bank',
+  MOBILE_MONEY = 'mobile_money',
+  CARD = 'card',
 }

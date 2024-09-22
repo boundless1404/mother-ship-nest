@@ -63,7 +63,7 @@ export class UpdateAppUserDataDto {
   @IsNotEmpty()
   @IsString()
   email: string;
-  
+
   @IsOptional()
   @IsString()
   firstName: string;

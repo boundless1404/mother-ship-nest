@@ -304,6 +304,21 @@ export class ProjectService {
       throwBadRequest('Either email or phone is required');
     }
 
+    // check when userPhone is provided that phone and phone code don't belong to an existing user
+    if (userPhone) {
+      const existingUser = await dbManager.findOne(User, {
+        where: {
+          phone: userPhone,
+          phoneCode: { name: signUpUserDto.phoneCode },
+        },
+        relations: ['phoneCode'],
+      });
+      if (existingUser) {
+        throwBadRequest(
+          'Phone number is already associated with an existing user',
+        );
+      }
+    }
     // check if user exists by email
     let user = await dbManager.findOne(User, {
       where: userEmailIsValid ? { email: userEmail } : { phone: userPhone },
@@ -667,12 +682,13 @@ export class ProjectService {
           to: userEmail,
           from: mailSenderAccount,
           subject: 'Verify Email',
-          html:
-            authhVerificationType === AppVerificationType.CODE
-              ? `Please use this code to complete your verification: ${token}`
-              : `
-        Kindly, click to verify your email. <a href="${tokenUrl}">Verify Email</a>. Or copy and paste this link in your browser ${tokenUrl}.
-      `,
+          html: `Hi, ${user.firstName} ${user.lastName}. Kindly, use the token provided to complete your verification: ${token.valueOfToken}.`,
+          //     html:
+          //       authhVerificationType === AppVerificationType.CODE
+          //         ? `Please use this code to complete your verification: ${token}`
+          //         : `
+          //   Kindly, click to verify your email. <a href="${tokenUrl}">Verify Email</a>. Or copy and paste this link in your browser ${tokenUrl}.
+          // `,
         };
 
         // save email in db to send later
@@ -697,13 +713,13 @@ export class ProjectService {
         // * Register sms content in db to send later
         const sms = new Sms();
         sms.to = `${options.userPhoneCode}${userPhone}`;
-        sms.content =
-          authhVerificationType === AppVerificationType.CODE
-            ? `Please use this code to verify completer your verification: ${token}`
-            : `
-              Kindly, click to verify your email ${tokenUrl}.
-               Or copy and paste the link in your browser.
-            `;
+        sms.content = `Hi, ${user.firstName} ${user.lastName}. Kindly, use the token provided to complete your verification: ${token.valueOfToken}.`;
+        // authhVerificationType === AppVerificationType.CODE
+        //   ? `Please use this code to verify completer your verification: ${token}`
+        //   : `
+        //     Kindly, click to verify your email ${tokenUrl}.
+        //      Or copy and paste the link in your browser.
+        //   `;
         sms.sender = app.name;
 
         await transactionManager.save(sms);
@@ -718,11 +734,9 @@ export class ProjectService {
   generateTokenCode(verificationTokenCount) {
     let tokenCode = '';
     const characters = '0123456789';
-    const charactersLength = characters.length;
+    const modifier = 10;
     for (let i = 0; i < verificationTokenCount; i++) {
-      tokenCode += characters.charAt(
-        Math.floor(Math.random() * charactersLength),
-      );
+      tokenCode += characters.charAt(Math.floor(Math.random() * modifier));
     }
     return tokenCode;
   }

@@ -1,9 +1,10 @@
 import { Credit_Source_Type, Wallet_Transaction_Type } from "src/lib/enums";
 import { pg_time_stamp_zone } from "src/lib/projectConstants";
-import { Column, CreateDateColumn, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import Wallet from "./wallet.entity";
 import { v4 } from "uuid";
 
+@Entity()
 export default class Wallet_Transaction {
    @PrimaryGeneratedColumn({type: 'bigint'})
     id: string;
