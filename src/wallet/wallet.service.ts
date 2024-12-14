@@ -50,10 +50,24 @@ export class WalletService {
     if (!wallet) {
       return;
     }
-    return pick(wallet, ['name', 'public_id', 'status', 'currency', 'balance']);
+    return pick(wallet, [
+      'name',
+      'public_id',
+      'status',
+      'currency.fullname',
+      'balance',
+    ]);
   }
 
-  async createWallet({ userId, appId }: { userId: string; appId: string }) {
+  async createWallet({
+    userId,
+    appId,
+    countryFullname,
+  }: {
+    userId: string;
+    appId: string;
+    countryFullname?: string;
+  }) {
     const appUser = await this.dbManager.findOne(AppUser, {
       where: {
         appId,
@@ -68,42 +82,71 @@ export class WalletService {
       throwBadRequest('Invalid request parameter. User does not exist.');
     }
 
-    let walletOwner = this.dbManager.create(Wallet_Owner, {
-      app_user_id: appUser.id,
-    });
+    countryFullname = countryFullname || 'Nigeria';
 
-    walletOwner = await this.dbManager.save(walletOwner);
-
-    const ngnCurrency = await this.dbManager.findOne(Currency, {
+    const currency = await this.dbManager.findOne(Currency, {
       where: {
         country: {
-          name: 'NGN',
+          fullname: countryFullname,
         },
       },
     });
 
+    currency || throwBadRequest('Invalid Currency');
+
+    let wallet: Wallet = await this.dbManager.findOne(Wallet, {
+      where: {
+        currencyId: currency.id,
+        wallet_owner: {
+          app_user_id: appUser.id,
+        },
+      },
+      relations: {
+        wallet_owner: true,
+        currency: true,
+      },
+    });
+
+    const walletOwner: Wallet_Owner = Boolean(wallet)
+      ? wallet.wallet_owner
+      : // create and save new wallet
+        await this.dbManager.save(
+          this.dbManager.create(Wallet_Owner, {
+            app_user_id: appUser.id,
+          }),
+        );
+
     const formatName = () => {
       return (
         appUser.user.firstName ||
-        '' + ' ' + appUser.user.lastName ||
-        ''
+        '' + '_' + appUser.user.lastName ||
+        '' + '_' + currency.fullname
       ).trim();
     };
 
-    let wallet = this.dbManager.create(Wallet, {
-      name: formatName(),
-      wallet_owner_id: walletOwner.app_user_id,
-      currencyId: ngnCurrency.countryId,
-    });
+    if (!wallet) {
+      wallet = this.dbManager.create(Wallet, {
+        name: formatName(),
+        wallet_owner_app_user_id: walletOwner.app_user_id,
+        currencyId: currency.id,
+      });
 
-    wallet = await this.dbManager.save(wallet);
+      wallet = await this.dbManager.save(wallet);
+      wallet = await this.dbManager.findOne(Wallet, {
+        where: {
+          id: wallet.id,
+        },
+        relations: { currency: true },
+      });
+    }
+
     return this.pickWalletFields(wallet);
   }
 
   async transactWallet({
     public_id,
     appId,
-    userId,
+    user_id,
     amount,
     credit_source_data,
     credit_source_type,
@@ -111,13 +154,13 @@ export class WalletService {
   }: {
     public_id: string;
     appId: string;
-    userId: string;
+    user_id: string;
     amount: string;
     credit_source_data?: string;
     credit_source_type: Credit_Source_Type;
     type: Wallet_Transaction_Type;
   }) {
-    let amountAsNum = Number(amount || null);
+    const amountAsNum = Number(amount || '');
     const amountIsInValid = Number.isNaN(amountAsNum);
     if (amountIsInValid) {
       throwBadRequest('amount field is invalid');
@@ -126,9 +169,11 @@ export class WalletService {
     let wallet = (await this.getWallet({
       public_id,
       appId,
-      userId,
+      userId: user_id,
       sanitize: false,
     })) as Wallet;
+
+    wallet || throwBadRequest('Invalid wallet reference.');
 
     wallet = await this.updateSaveWallet({
       wallet,

@@ -56,16 +56,20 @@ export class CreateWalletDto {
   @IsNotEmpty()
   @IsNumberString()
   user_id: string;
+
+  @IsOptional()
+  @IsString()
+  country_fullname: string;
 }
 
 export class TransactWalletDto {
   @IsNotEmpty()
-  @IsNumberString()
+  @IsString()
   public_id: string;
 
   @IsNotEmpty()
   @IsNumberString()
-  userId: string;
+  user_id: string;
 
   @IsNotEmpty()
   @IsNumberString()

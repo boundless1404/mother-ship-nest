@@ -12,7 +12,7 @@ import { Country } from './Country.entity';
 @Entity()
 export class Currency {
   @PrimaryGeneratedColumn({ type: 'bigint' })
-  id: number;
+  id: string;
 
   @Column({ type: 'varchar' })
   name: string;

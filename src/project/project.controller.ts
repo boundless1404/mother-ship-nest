@@ -106,7 +106,7 @@ export class ProjectController {
   }
 
   @Put('/app/user')
-  @UseGuards(IsAuthenticated)
+  @UseGuards(new IsAuthenticated({ isApiAccess: true }))
   async updateAppUserData(
     @Body() updateAppUser: UpdateAppUserDataDto,
     @GetAuthPayload('apiData') apiData: AuthenticatedApiData,

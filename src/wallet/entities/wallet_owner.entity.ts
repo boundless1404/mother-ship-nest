@@ -1,6 +1,16 @@
-import { pg_time_stamp_zone } from 'src/lib/projectConstants';
-import AppUser from 'src/project/entities/AppUser.entity';
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, OneToMany, OneToOne, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import { pg_time_stamp_zone } from '../../lib/projectConstants';
+import AppUser from '../../project/entities/AppUser.entity';
+import {
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  Entity,
+  JoinColumn,
+  OneToMany,
+  OneToOne,
+  PrimaryColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import Wallet from './wallet.entity';
 
 @Entity()
@@ -33,5 +43,5 @@ export default class Wallet_Owner {
   app_user: AppUser;
 
   @OneToMany(() => Wallet, (wallet) => wallet.wallet_owner)
-  wallets: Wallet[]
+  wallets: Wallet[];
 }

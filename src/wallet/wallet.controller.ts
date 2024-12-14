@@ -28,6 +28,9 @@ export class WalletController {
     return await this.walletService.createWallet({
       userId: createWalletDto.user_id,
       appId: apiData.appId,
+      ...(createWalletDto.country_fullname
+        ? { countryFullname: createWalletDto.country_fullname }
+        : {}),
     });
   }
 
@@ -48,7 +51,7 @@ export class WalletController {
   @Put()
   async transactWallet(
     @GetAuthPayload('apiData') apiData: AuthenticatedApiData,
-    transact_wallet_dto: TransactWalletDto,
+    @Body() transact_wallet_dto: TransactWalletDto,
   ) {
     return await this.walletService.transactWallet({
       ...transact_wallet_dto,
