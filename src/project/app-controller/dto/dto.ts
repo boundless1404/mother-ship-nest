@@ -57,6 +57,10 @@ export class AppUserSignInDto {
   @IsNotEmpty()
   @IsString()
   password: string;
+
+  @IsOptional()
+  @IsBoolean()
+  generateToken: boolean;
 }
 
 export class UpdateAppUserDataDto {

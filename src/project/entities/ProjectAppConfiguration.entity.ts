@@ -39,6 +39,12 @@ export class ProjectAppConfiguration {
   @Column({ type: 'integer', default: 6 })
   verificationTokenCount: number;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  sharedAppTokenSecret: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  tokenExpiry: string;
+
   // foreign keys
   @Index()
   @Column({ type: 'bigint' })

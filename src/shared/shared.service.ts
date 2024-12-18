@@ -39,12 +39,13 @@ export class SharedService {
   }
 
   signPayload(
-    payload: string | Buffer | AuthPayload,
+    payload: string | Buffer | AuthPayload | Record<string, unknown>,
     expiresIn?: string | number,
+    secret?: string,
   ): string {
     const token = this.jwtService.sign(payload, {
       expiresIn,
-      secret: this.config.get('JWT_SECRET'),
+      secret: secret || this.config.get('JWT_SECRET'),
     });
     return token;
   }

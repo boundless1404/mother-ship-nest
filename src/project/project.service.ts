@@ -420,6 +420,9 @@ export class ProjectService {
     // check if app exists
     const app = await dbManager.findOne(App, {
       where: { id: appId },
+      relations: {
+        projectConfiguration: true,
+      },
     });
 
     if (!app) {
@@ -464,7 +467,33 @@ export class ProjectService {
     //   dbManager,
     // );
 
-    return this.getAuthResponse({ user, isVerified: appUser.isVerified });
+    const userAuthData = this.getAuthResponse({
+      user,
+      isVerified: appUser.isVerified,
+    });
+
+    if (signInUserDto.generateToken) {
+      // TODO: fetch project app configuration
+      // hint fetch appuser and project configuration
+      // get the app token secrett
+      const appTokenSecret = app.projectConfiguration.sharedAppTokenSecret;
+      const appTokenPayload = {
+        appId,
+        userId: user.id,
+        appName: app.name,
+      };
+
+      // sign payload with app token secret
+      const appToken = this.sharedService.signPayload(
+        appTokenPayload,
+        app.projectConfiguration.tokenExpiry,
+        appTokenSecret,
+      );
+      return { token: appToken };
+    }
+
+    // use app token secre to sign payload
+    return userAuthData;
   }
 
   async createAppUser(
