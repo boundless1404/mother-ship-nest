@@ -24,7 +24,7 @@ export default class Wallet {
   @Column({ type: 'varchar', nullable: true })
   name: string;
 
-  @Column({ type: 'uuid', default: v4() })
+  @Column({ type: 'uuid', default: () => 'uuid_generate_v4()', unique: true })
   public_id: string;
 
   @Column({ type: 'enum', enum: Wallet_Status, default: Wallet_Status.ACTIVE })
