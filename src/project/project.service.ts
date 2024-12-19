@@ -478,9 +478,11 @@ export class ProjectService {
       // get the app token secrett
       const appTokenSecret = app.projectConfiguration.sharedAppTokenSecret;
       const appTokenPayload = {
-        appId,
-        userId: user.id,
-        appName: app.name,
+        appUser: {
+          appId,
+          userId: user.id,
+          appName: app.name,
+        },
       };
 
       // sign payload with app token secret
@@ -492,7 +494,7 @@ export class ProjectService {
       return { token: appToken };
     }
 
-    // use app token secre to sign payload
+    // use app token secret to sign payload
     return userAuthData;
   }
 
