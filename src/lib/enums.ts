@@ -49,3 +49,9 @@ export enum Credit_Source_Type {
   MOBILE_MONEY = 'mobile_money',
   CARD = 'card',
 }
+
+export enum UUID_PREFIX {
+  USER = '001',
+  APP = '002',
+  WALLET = '003',
+}

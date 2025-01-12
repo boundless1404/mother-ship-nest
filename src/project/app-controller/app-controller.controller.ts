@@ -26,21 +26,21 @@ export class AppControllerController {
     return 'Hello World!';
   }
 
-  @Post('/user/sign-up')
-  @UseGuards(IsAuthenticated)
+  @Post('/user/:appId/sign-up')
   async appUserSignUp(
     @Body() signUpDto: AppUserSignUpDto,
-    @GetAuthPayload('apiData') apiData: AuthenticatedApiData,
+    @Query('apiData') apiData: { appId: string },
   ) {
     await this.projectService.signUserUpInApp(apiData, signUpDto);
     return '';
   }
 
-  @Post('/user/sign-in')
-  @UseGuards(IsAuthenticated)
+  @Post('/user/:appId/sign-in')
+  // @UseGuards(IsAuthenticated)
   async appUserSignIn(
     @Body() signInDto: AppUserSignInDto,
-    @GetAuthPayload('apiData') apiData: AuthenticatedApiData,
+    //
+    @Query('apiData') apiData: { appId: string },
   ) {
     const authResponse = await this.projectService.signUserInApp(
       apiData,
@@ -76,4 +76,6 @@ export class AppControllerController {
     });
     return authResponse;
   }
+
+  // TODO: add resend token
 }

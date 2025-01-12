@@ -278,7 +278,7 @@ export class ProjectService {
   }
 
   async signUserUpInApp(
-    apiData: AuthenticatedApiData,
+    apiData: { appId: string },
     signUpUserDto: AppUserSignUpDto,
   ) {
     const dbManager = this.dbSource.manager;
@@ -290,7 +290,7 @@ export class ProjectService {
     }
     // check if app exists
     const app = await dbManager.findOne(App, {
-      where: { id: appId },
+      where: { publicId: appId },
     });
 
     if (!app) {
@@ -406,8 +406,24 @@ export class ProjectService {
     } as AuthResponse;
   }
 
+  async getAppPublicId(appId: string, projectId) {
+    const dbManager = this.dbSource.createEntityManager();
+    const app = await dbManager.findOne(App, {
+      where: {
+        id: appId,
+        projectId,
+      },
+    });
+
+    if (!app) {
+      throwBadRequest('App does not exist');
+    }
+
+    return app.publicId;
+  }
+
   async signUserInApp(
-    apiData: AuthenticatedApiData,
+    apiData: { appId: string },
     signInUserDto: AppUserSignInDto,
   ) {
     const dbManager = this.dbSource.manager;
@@ -419,7 +435,7 @@ export class ProjectService {
     }
     // check if app exists
     const app = await dbManager.findOne(App, {
-      where: { id: appId },
+      where: { publicId: appId },
       relations: {
         projectConfiguration: true,
       },

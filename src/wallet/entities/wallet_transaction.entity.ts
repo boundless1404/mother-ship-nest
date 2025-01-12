@@ -1,6 +1,7 @@
 import { Credit_Source_Type, Wallet_Transaction_Type } from '../../lib/enums';
 import { pg_time_stamp_zone } from '../../lib/projectConstants';
 import {
+  BeforeInsert,
   Column,
   CreateDateColumn,
   Entity,
@@ -27,7 +28,7 @@ export default class Wallet_Transaction {
   /**
    * The transaction reference.
    */
-  @Column({ type: 'varchar', default: v4() })
+  @Column({ type: 'varchar' })
   reference: string;
 
   @Column({ type: 'varchar' })
@@ -70,4 +71,9 @@ export default class Wallet_Transaction {
   })
   @JoinColumn({ name: 'source_wallet_id' })
   source_wallet: Wallet;
+
+  @BeforeInsert()
+  generateReference() {
+    this.reference = v4();
+  }
 }

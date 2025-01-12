@@ -26,6 +26,7 @@ import {
 import { TokenCreationPurpose } from 'src/lib/enums';
 // import { Token } from './entities/Token.entity';
 
+// TODO: change projectId to use public id
 @Controller('project')
 export class ProjectController {
   constructor(private projectService: ProjectService) {
@@ -75,6 +76,19 @@ export class ProjectController {
       appId,
     );
     return { apiToken: accessToken };
+  }
+
+  @Get('/:projectId/apps/public-id')
+  @UseGuards(new IsAuthenticated({ isApiAccess: true }))
+  async getAppPublicId(
+    @GetAuthPayload() authPayload: AuthenticatedApiData,
+    @Param('projectId') projectId,
+  ) {
+    //
+    return await this.projectService.getAppPublicId(
+      authPayload.appId,
+      projectId,
+    );
   }
 
   // * sign user up in app
