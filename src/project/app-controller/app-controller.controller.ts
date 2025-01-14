@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
   Put,
   Query,
@@ -16,6 +17,7 @@ import {
 import { IsAuthenticated } from 'src/shared/isAuthenticated.guard';
 import { GetAuthPayload } from 'src/shared/getAuthenticatedUserPayload.decorator';
 import { AuthenticatedApiData } from 'src/lib/types';
+import { TokenCreationPurpose } from 'src/lib/enums';
 @Controller('app')
 export class AppControllerController {
   constructor(private projectService: ProjectService) {
@@ -26,21 +28,22 @@ export class AppControllerController {
     return 'Hello World!';
   }
 
-  @Post('/user/:appId/sign-up')
+  @Post('/user/:publicId/sign-up')
   async appUserSignUp(
     @Body() signUpDto: AppUserSignUpDto,
-    @Query('apiData') apiData: { appId: string },
+    @Param('publicId') publicId: string
   ) {
+    const apiData = { publicId }
     await this.projectService.signUserUpInApp(apiData, signUpDto);
     return '';
   }
 
-  @Post('/user/:appId/sign-in')
+  @Post('/user/:publicId/sign-in')
   // @UseGuards(IsAuthenticated)
   async appUserSignIn(
     @Body() signInDto: AppUserSignInDto,
     //
-    @Query('apiData') apiData: { appId: string },
+    @Param() apiData: { publicId: string },
   ) {
     const authResponse = await this.projectService.signUserInApp(
       apiData,
@@ -78,4 +81,22 @@ export class AppControllerController {
   }
 
   // TODO: add resend token
+  //TODO: add Verify Token
+  @Post('/:publicId/complete-verification')
+  // @UseGuards(new IsAuthenticated({ isApiAccess: true })
+  async completeVerification(
+    @Body()
+    query: { email: string; token: string; tokenPurpose: TokenCreationPurpose },
+    @Param() apiData: { publicId: string },
+  ) {
+    const { email, token, tokenPurpose } = query;
+    const authResponse = await this.projectService.completeAppUserVerification({
+      publicId: apiData.publicId,
+      email,
+      token,
+      tokenPurpose,
+    });
+    return authResponse;
+  }
+
 }

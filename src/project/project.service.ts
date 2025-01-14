@@ -278,24 +278,28 @@ export class ProjectService {
   }
 
   async signUserUpInApp(
-    apiData: { appId: string },
+    apiData: { publicId?: string; appId?: string },
     signUpUserDto: AppUserSignUpDto,
   ) {
     const dbManager = this.dbSource.manager;
     // extract app id from apiData
-    const { appId } = apiData;
+    let { publicId, appId } = apiData;
 
-    if (!appId) {
+    if (!publicId && !appId) {
       throwForbidden('Invalid App access.');
     }
     // check if app exists
     const app = await dbManager.findOne(App, {
-      where: { publicId: appId },
+      where: {
+        ...(appId? { id: appId } : { publicId }),
+      }
     });
 
     if (!app) {
       throwBadRequest('App does not exist');
     }
+
+    appId = app.id;
 
     const userEmail = signUpUserDto.email;
     const userPhone = signUpUserDto.phone;
@@ -350,6 +354,7 @@ export class ProjectService {
         user = await transactionManager.save(user);
         isNewUser = true;
       }
+
       userCreatedInApp = await this.createAppUser(
         appId,
         user.id,
@@ -423,19 +428,19 @@ export class ProjectService {
   }
 
   async signUserInApp(
-    apiData: { appId: string },
+    apiData: { publicId?: string; appId?: string },
     signInUserDto: AppUserSignInDto,
   ) {
     const dbManager = this.dbSource.manager;
     // extract app id from apiData
-    const { appId } = apiData;
+    let { publicId, appId } = apiData;
 
-    if (!appId) {
+    if (!publicId && !appId) {
       throwForbidden('Invalid App access.');
     }
     // check if app exists
     const app = await dbManager.findOne(App, {
-      where: { publicId: appId },
+      where: { ...(appId? { id: appId } : { publicId }) },
       relations: {
         projectConfiguration: true,
       },
@@ -444,6 +449,8 @@ export class ProjectService {
     if (!app) {
       throwBadRequest('App does not exist');
     }
+
+    appId = app.id;
 
     // check if user exists by email or phone
     const user = await dbManager.findOne(User, {
@@ -788,17 +795,20 @@ export class ProjectService {
 
   // write method to respond to verify email link
   async completeAppUserVerification({
+    publicId,
     appId,
     email,
     token,
     tokenPurpose,
   }: {
-    appId: string;
+    publicId?: string
+    appId?: string;
     email: string;
     tokenPurpose: TokenCreationPurpose;
     token: string;
   }) {
     return await this.verifyToken({
+      publicId,
       appId,
       email,
       token,
@@ -807,12 +817,14 @@ export class ProjectService {
   }
 
   async verifyToken({
+    publicId,
     appId,
     email,
     appUserId,
     token,
     tokenPurpose = TokenCreationPurpose.SIGN_UP,
   }: {
+    publicId?: string
     email?: string;
     appId?: string;
     appUserId?: string;
