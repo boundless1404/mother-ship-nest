@@ -32,9 +32,9 @@ export class AppControllerController {
   @Post('/user/:publicId/sign-up')
   async appUserSignUp(
     @Body() signUpDto: AppUserSignUpDto,
-    @Param('publicId') publicId: string
+    @Param('publicId') publicId: string,
   ) {
-    const apiData = { publicId }
+    const apiData = { publicId };
     await this.projectService.signUserUpInApp(apiData, signUpDto);
     return '';
   }
@@ -81,7 +81,6 @@ export class AppControllerController {
     return authResponse;
   }
 
-  // TODO: add resend token
   @Post('/:publicId/resend-token')
   async resendVerificationToken(
     @Body() resendTokenDto: ResendTokenDto,
@@ -90,8 +89,6 @@ export class AppControllerController {
     await this.projectService.resendToken(resendTokenDto, apiData);
   }
 
-
-  //TODO: add Verify Token
   @Post('/:publicId/complete-verification')
   // @UseGuards(new IsAuthenticated({ isApiAccess: true })
   async completeVerification(
@@ -108,5 +105,4 @@ export class AppControllerController {
     });
     return authResponse;
   }
-
 }

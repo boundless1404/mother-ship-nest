@@ -283,6 +283,7 @@ export class ProjectService {
   ) {
     const dbManager = this.dbSource.manager;
     // extract app id from apiData
+    // eslint-disable-next-line prefer-const
     let { publicId, appId } = apiData;
 
     if (!publicId && !appId) {
@@ -291,8 +292,8 @@ export class ProjectService {
     // check if app exists
     const app = await dbManager.findOne(App, {
       where: {
-        ...(appId? { id: appId } : { publicId }),
-      }
+        ...(appId ? { id: appId } : { publicId }),
+      },
     });
 
     if (!app) {
@@ -433,6 +434,7 @@ export class ProjectService {
   ) {
     const dbManager = this.dbSource.manager;
     // extract app id from apiData
+    // eslint-disable-next-line prefer-const
     let { publicId, appId } = apiData;
 
     if (!publicId && !appId) {
@@ -440,7 +442,7 @@ export class ProjectService {
     }
     // check if app exists
     const app = await dbManager.findOne(App, {
-      where: { ...(appId? { id: appId } : { publicId }) },
+      where: { ...(appId ? { id: appId } : { publicId }) },
       relations: {
         projectConfiguration: true,
       },
@@ -801,7 +803,7 @@ export class ProjectService {
     token,
     tokenPurpose,
   }: {
-    publicId?: string
+    publicId?: string;
     appId?: string;
     email: string;
     tokenPurpose: TokenCreationPurpose;
@@ -823,7 +825,7 @@ export class ProjectService {
     token,
     tokenPurpose = TokenCreationPurpose.SIGN_UP,
   }: {
-    publicId?: string
+    publicId?: string;
     email?: string;
     appId?: string;
     appUserId?: string;
@@ -902,20 +904,20 @@ export class ProjectService {
 
   async resendToken(
     resendTokenDto: ResendTokenDto,
-    appData:  {publicId?: string; appId?: string},
+    appData: { publicId?: string; appId?: string },
   ) {
     const { email } = resendTokenDto;
-    let {appId, publicId} = appData;
+    const { appId, publicId } = appData;
 
     if (!appId && !publicId) {
-      throwBadRequest("Invalid App reference.")
+      throwBadRequest('Invalid App reference.');
     }
 
     const dbManager = this.dbSource.manager;
     const appUser = await dbManager.findOne(AppUser, {
       where: {
         app: {
-          ...(appId? { id: appId } : { publicId})
+          ...(appId ? { id: appId } : { publicId }),
         },
         user: {
           email,
