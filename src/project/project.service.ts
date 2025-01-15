@@ -817,7 +817,6 @@ export class ProjectService {
   }
 
   async verifyToken({
-    publicId,
     appId,
     email,
     appUserId,
@@ -903,15 +902,21 @@ export class ProjectService {
 
   async resendToken(
     resendTokenDto: ResendTokenDto,
-    appData: AuthenticatedApiData,
+    appData:  {publicId?: string; appId?: string},
   ) {
     const { email } = resendTokenDto;
-    const appId: string = appData.appId;
+    let {appId, publicId} = appData;
+
+    if (!appId && !publicId) {
+      throwBadRequest("Invalid App reference.")
+    }
 
     const dbManager = this.dbSource.manager;
     const appUser = await dbManager.findOne(AppUser, {
       where: {
-        appId,
+        app: {
+          ...(appId? { id: appId } : { publicId})
+        },
         user: {
           email,
         },

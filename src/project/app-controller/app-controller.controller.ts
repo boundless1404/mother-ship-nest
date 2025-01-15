@@ -12,6 +12,7 @@ import { ProjectService } from '../project.service';
 import {
   AppUserSignInDto,
   AppUserSignUpDto,
+  ResendTokenDto,
   UpdateAppUserDataDto,
 } from './dto/dto';
 import { IsAuthenticated } from 'src/shared/isAuthenticated.guard';
@@ -81,6 +82,15 @@ export class AppControllerController {
   }
 
   // TODO: add resend token
+  @Post('/:publicId/resend-token')
+  async resendVerificationToken(
+    @Body() resendTokenDto: ResendTokenDto,
+    @Param() apiData: AuthenticatedApiData,
+  ) {
+    await this.projectService.resendToken(resendTokenDto, apiData);
+  }
+
+
   //TODO: add Verify Token
   @Post('/:publicId/complete-verification')
   // @UseGuards(new IsAuthenticated({ isApiAccess: true })
