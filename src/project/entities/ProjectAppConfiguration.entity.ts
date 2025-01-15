@@ -4,12 +4,14 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Project } from './Project.entity';
 import App from './App.entity';
 import { AppVerificationPivot, AppVerificationType } from '../../lib/enums';
+import { ProjectConfEmailDetail } from './ProjectConfEmailDetail.entity';
 
 @Entity()
 export class ProjectAppConfiguration {
@@ -62,4 +64,10 @@ export class ProjectAppConfiguration {
   @OneToOne(() => App, (app) => app.projectConfiguration)
   @JoinColumn({ name: 'appId' })
   app: App;
+
+  @OneToMany(
+    () => ProjectConfEmailDetail,
+    (projectConfEmailDetail) => projectConfEmailDetail.projectAppConfiguration,
+  )
+  projectConfEmailDetails: ProjectConfEmailDetail[];
 }

@@ -55,3 +55,8 @@ export enum UUID_PREFIX {
   APP = '002',
   WALLET = '003',
 }
+
+export enum ProjectConfEmailDetailTypeEnum {
+  VERIFICATION = 'verification',
+  PASSWORD_RESET = 'password_reset',
+}
