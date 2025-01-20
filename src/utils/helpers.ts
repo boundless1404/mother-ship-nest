@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { DEFAULT_TOKEN_EXPIRY } from 'src/lib/projectConstants';
 
 export function createObject<T>(propsValues?: Partial<T>): T {
   const objectTypeBluePrint = getConstructor(propsValues);
@@ -51,3 +52,22 @@ export const throwBadRequest = (message: string) => {
 export const throwForbidden = (message: string) => {
   throw new HttpException(message, HttpStatus.FORBIDDEN);
 };
+
+export function getTokenExpiry(tokenExpiry?: string | number) {
+  let expiry = DEFAULT_TOKEN_EXPIRY;
+  if (typeof tokenExpiry === 'number') {
+    expiry = tokenExpiry;
+  }
+  if (typeof tokenExpiry === 'string') {
+    // check token contains 'h' or 'd' to determine if it is in hours or days
+    const isHour = tokenExpiry.includes('h');
+
+    expiry =
+      parseInt(tokenExpiry.slice(0, tokenExpiry.length - 2)) *
+      (isHour ? 60 * 60 : 60 * 60 * 24);
+
+    expiry = parseInt(tokenExpiry);
+  }
+
+  return expiry;
+}

@@ -1,14 +1,16 @@
 import {
   Column,
   CreateDateColumn,
+  Entity,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { ProjectAppConfiguration } from './ProjectAppConfiguration.entity';
-import { ProjectConfEmailDetailTypeEnum } from 'src/lib/enums';
+import { ProjectConfEmailDetailTypeEnum } from '../../lib/enums';
 
+@Entity()
 export class ProjectConfEmailDetail {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: string;

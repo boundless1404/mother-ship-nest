@@ -1,11 +1,12 @@
 import { VersioningType } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import getAppConfig from './config/envs/app.config';
-import { Logger, LoggerErrorInterceptor } from 'nestjs-pino';
+import { LoggerErrorInterceptor } from 'nestjs-pino';
 import { Logger as NestLogger } from '@nestjs/common';
+import { AllExceptionFilter } from './shared/allExceptionsHandler.exception';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -36,6 +37,8 @@ async function bootstrap() {
     methods: '*',
     exposedHeaders: ['NEW_AUTH_TOKEN'],
   });
+
+  app.useGlobalFilters(new AllExceptionFilter(app.get(HttpAdapterHost)));
 
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   const port =

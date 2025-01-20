@@ -16,7 +16,6 @@ import { ProjectUser } from '../../project/entities/ProjectUser.entity';
 import { ProjectUserPassword } from '../../project/entities/ProjectUserPassword.entity';
 import { Token } from '../../project/entities/Token.entity';
 import { PhoneCode } from '../../project/entities/PhoneCode.entity';
-import { UUID_PREFIX } from '../../lib/enums';
 
 @Entity()
 export class User {
@@ -26,7 +25,7 @@ export class User {
   @Column({
     type: 'varchar',
     unique: true,
-    default: `'${UUID_PREFIX.USER}-' || uuid_generate_v4()`,
+    default: () => `uuid_generate_v4()`,
   })
   publicId: string;
 
