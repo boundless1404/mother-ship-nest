@@ -10,7 +10,6 @@ import {
 import AppUser from './AppUser.entity';
 import { Token } from './Token.entity';
 import { ProjectAppConfiguration } from './ProjectAppConfiguration.entity';
-import { UUID_PREFIX } from '../../lib/enums';
 
 @Entity()
 export default class App {
@@ -20,7 +19,7 @@ export default class App {
   @Column({
     type: 'varchar',
     unique: true,
-    default: `'${UUID_PREFIX.APP}-' || uuid_generate_v4()`,
+    default: () => `uuid_generate_v4()`,
   })
   publicId: string;
 

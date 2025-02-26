@@ -1,6 +1,7 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { AdminUserSignInDto, AdminUserSignUpDto } from './dtos/dto';
 import { AuthService } from './auth.service';
+import { IsAuthenticated } from 'src/shared/isAuthenticated.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -14,6 +15,7 @@ export class AuthController {
    * @returns
    */
   @Post('/users')
+  @UseGuards(IsAuthenticated)
   async adminUserSignUp(@Body() userDto: AdminUserSignUpDto) {
     //
     const token = await this.authService.createAndSignUserPayload(userDto);

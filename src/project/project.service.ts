@@ -8,7 +8,11 @@ import { DataSource, EntityManager } from 'typeorm';
 import { Project } from './entities/Project.entity';
 import { ProjectUser } from './entities/ProjectUser.entity';
 import { CreateAppDto, CreateProjectDto } from './dto/dto';
-import { throwBadRequest, throwForbidden } from 'src/utils/helpers';
+import {
+  getTokenExpiry,
+  throwBadRequest,
+  throwForbidden,
+} from 'src/utils/helpers';
 import App from './entities/App.entity';
 import AppUser from './entities/AppUser.entity';
 import { ConfigService } from '@nestjs/config';
@@ -22,17 +26,18 @@ import {
 import { Token } from './entities/Token.entity';
 import {
   AppVerificationPivot,
-  AppVerificationType,
   EmailPriority,
+  ProjectConfEmailDetailTypeEnum,
   TokenCreationPurpose,
 } from 'src/lib/enums';
-import { User } from 'src/auth/entities/User.entity';
-import { Email } from 'src/shared/email.entity';
+import { User } from '../auth/entities/User.entity';
+import { Email } from '../shared/email.entity';
 import { Sms } from './entities/Sms.entity';
 import { isEmail } from 'class-validator';
 import { omit } from 'lodash';
 import { PhoneCode } from './entities/PhoneCode.entity';
-import { DEFAULT_TOKEN_EXPIRY } from 'src/lib/projectConstants';
+import { DEFAULT_TOKEN_EXPIRY } from '../lib/projectConstants';
+import { ProjectAppConfiguration } from './entities/ProjectAppConfiguration.entity';
 
 @Injectable()
 export class ProjectService {
@@ -278,24 +283,29 @@ export class ProjectService {
   }
 
   async signUserUpInApp(
-    apiData: { appId: string },
+    apiData: { publicId?: string; appId?: string },
     signUpUserDto: AppUserSignUpDto,
   ) {
     const dbManager = this.dbSource.manager;
     // extract app id from apiData
-    const { appId } = apiData;
+    // eslint-disable-next-line prefer-const
+    let { publicId, appId } = apiData;
 
-    if (!appId) {
+    if (!publicId && !appId) {
       throwForbidden('Invalid App access.');
     }
     // check if app exists
     const app = await dbManager.findOne(App, {
-      where: { publicId: appId },
+      where: {
+        ...(appId ? { id: appId } : { publicId }),
+      },
     });
 
     if (!app) {
       throwBadRequest('App does not exist');
     }
+
+    appId = app.id;
 
     const userEmail = signUpUserDto.email;
     const userPhone = signUpUserDto.phone;
@@ -350,6 +360,7 @@ export class ProjectService {
         user = await transactionManager.save(user);
         isNewUser = true;
       }
+
       userCreatedInApp = await this.createAppUser(
         appId,
         user.id,
@@ -423,19 +434,20 @@ export class ProjectService {
   }
 
   async signUserInApp(
-    apiData: { appId: string },
+    apiData: { publicId?: string; appId?: string },
     signInUserDto: AppUserSignInDto,
   ) {
     const dbManager = this.dbSource.manager;
     // extract app id from apiData
-    const { appId } = apiData;
+    // eslint-disable-next-line prefer-const
+    let { publicId, appId } = apiData;
 
-    if (!appId) {
+    if (!publicId && !appId) {
       throwForbidden('Invalid App access.');
     }
     // check if app exists
     const app = await dbManager.findOne(App, {
-      where: { publicId: appId },
+      where: { ...(appId ? { id: appId } : { publicId }) },
       relations: {
         projectConfiguration: true,
       },
@@ -444,6 +456,8 @@ export class ProjectService {
     if (!app) {
       throwBadRequest('App does not exist');
     }
+
+    appId = app.id;
 
     // check if user exists by email or phone
     const user = await dbManager.findOne(User, {
@@ -657,7 +671,9 @@ export class ProjectService {
         id: appId,
       },
       relations: {
-        projectConfiguration: true,
+        projectConfiguration: {
+          projectConfEmailDetails: true,
+        },
       },
     });
 
@@ -706,6 +722,11 @@ export class ProjectService {
 
       // save token in db
       await transactionManager.save(token);
+      const projectConfEmailDetail =
+        projectAppConfiguration?.projectConfEmailDetails.find(
+          (detail) =>
+            detail.type === ProjectConfEmailDetailTypeEnum.VERIFICATION,
+        );
 
       // const app = projectAppConfiguration.app;
       const authhVerificationType =
@@ -725,9 +746,18 @@ export class ProjectService {
         const mailSenderAccount = this.configService.get('MAIL_SENDER_ACCOUNT');
         const msg = {
           to: userEmail,
-          from: mailSenderAccount,
-          subject: 'Verify Email',
-          html: `Hi, ${user.firstName} ${user.lastName}. Kindly, use the token provided to complete your verification: ${token.valueOfToken}.`,
+          from: projectConfEmailDetail?.emailSenderAddress || mailSenderAccount,
+          subject: projectConfEmailDetail?.emailSubject || 'Verify Email',
+          sender:
+            projectConfEmailDetail?.emailSenderName ||
+            app.name ||
+            'Mother-Ship',
+          html:
+            projectConfEmailDetail?.emailBodyTemplate.replace(
+              '<token>',
+              token.valueOfToken,
+            ) ||
+            `Hi, ${user.firstName} ${user.lastName}. Kindly, use the token provided to complete your verification: ${token.valueOfToken}.`,
           //     html:
           //       authhVerificationType === AppVerificationType.CODE
           //         ? `Please use this code to complete your verification: ${token}`
@@ -750,7 +780,10 @@ export class ProjectService {
               },
             },
           ],
-          from: { address: msg.from, name: 'MotherShip' },
+          from: {
+            address: msg.from,
+            name: msg.sender,
+          },
           subject: msg.subject,
           htmlbody: msg.html,
         });
@@ -788,17 +821,20 @@ export class ProjectService {
 
   // write method to respond to verify email link
   async completeAppUserVerification({
+    publicId,
     appId,
     email,
     token,
     tokenPurpose,
   }: {
-    appId: string;
+    publicId?: string;
+    appId?: string;
     email: string;
     tokenPurpose: TokenCreationPurpose;
     token: string;
   }) {
     return await this.verifyToken({
+      publicId,
       appId,
       email,
       token,
@@ -812,7 +848,9 @@ export class ProjectService {
     appUserId,
     token,
     tokenPurpose = TokenCreationPurpose.SIGN_UP,
+    publicId,
   }: {
+    publicId?: string;
     email?: string;
     appId?: string;
     appUserId?: string;
@@ -821,43 +859,27 @@ export class ProjectService {
   }) {
     //
     const dbManager = this.dbSource.manager;
-    const appUser = await (appUserId
-      ? dbManager.findOne(AppUser, {
-          where: {
-            id: appUserId,
-            app: {
-              tokens: {
-                valueOfToken: token,
-              },
-            },
-          },
-          relations: {
-            app: {
-              tokens: true,
-            },
-            user: {
-              phoneCode: true,
-            },
-          },
-        })
-      : dbManager.findOne(AppUser, {
-          where: {
-            app: {
-              id: appId,
-            },
-            user: {
-              email,
-            },
-          },
-          relations: {
-            app: {
-              tokens: true,
-            },
-            user: {
-              phoneCode: true,
-            },
-          },
-        }));
+    const appUser = await dbManager.findOne(AppUser, {
+      where: {
+        ...(appUserId ? { id: appUserId } : {}),
+        ...(publicId || appId
+          ? publicId
+            ? { app: { publicId } }
+            : { app: { id: appId } }
+          : {}),
+        tokens: {
+          valueOfToken: token,
+        },
+      },
+      relations: {
+        app: {
+          tokens: true,
+        },
+        user: {
+          phoneCode: true,
+        },
+      },
+    });
 
     if (!appUser) {
       throwBadRequest('Invalid token or user');
@@ -871,6 +893,7 @@ export class ProjectService {
     // });
     await dbManager.transaction(async (transactionManager) => {
       // * Update appUser if token purpose is sign-up
+
       if (appUser && tokenPurpose === TokenCreationPurpose.SIGN_UP) {
         appUser.isVerified = true;
       }
@@ -891,21 +914,28 @@ export class ProjectService {
 
   async resendToken(
     resendTokenDto: ResendTokenDto,
-    appData: AuthenticatedApiData,
+    appData: { publicId?: string; appId?: string },
   ) {
     const { email } = resendTokenDto;
-    const appId: string = appData.appId;
+    const { appId, publicId } = appData;
+
+    if (!appId && !publicId) {
+      throwBadRequest('Invalid App reference.');
+    }
 
     const dbManager = this.dbSource.manager;
     const appUser = await dbManager.findOne(AppUser, {
       where: {
-        appId,
+        app: {
+          ...(appId ? { id: appId } : { publicId }),
+        },
         user: {
           email,
         },
       },
       relations: {
         user: true,
+        app: true,
       },
     });
 
@@ -923,8 +953,26 @@ export class ProjectService {
       await dbManager.delete(Token, { id: existingToken.id });
     }
 
-    const tokenExpiry = DEFAULT_TOKEN_EXPIRY;
-    const verificationTokenCount = 6;
+    const projectAppConfiguration = await dbManager.findOne(
+      ProjectAppConfiguration,
+      {
+        where: {
+          appId: appUser.app.id,
+        },
+        relations: {
+          projectConfEmailDetails: true,
+        },
+      },
+    );
+
+    const projectConfEmailDetail =
+      projectAppConfiguration?.projectConfEmailDetails.find(
+        (detail) => detail.type === ProjectConfEmailDetailTypeEnum.VERIFICATION,
+      );
+
+    const tokenExpiry = getTokenExpiry(projectAppConfiguration?.tokenExpiry);
+    const verificationTokenCount =
+      projectAppConfiguration?.verificationTokenCount || 6;
     const tokenCode = this.generateTokenCode(verificationTokenCount);
     const token = this.createTokenObject(
       tokenCode,
@@ -939,9 +987,15 @@ export class ProjectService {
       const mailSenderAccount = this.configService.get('MAIL_SENDER_ACCOUNT');
       const msg = {
         to: user.email,
-        from: mailSenderAccount,
-        subject: 'Resend Verification Token',
-        html: `Your new verification token is: ${tokenCode}`,
+        from: projectConfEmailDetail?.emailSenderAddress || mailSenderAccount,
+        sender: projectConfEmailDetail?.emailSenderName || 'Mother-Ship',
+        subject:
+          projectConfEmailDetail?.emailSubject || 'Resend Verification Token',
+        html:
+          projectConfEmailDetail?.emailBodyTemplate.replace(
+            '<token>',
+            tokenCode,
+          ) || `Your new verification token is: ${tokenCode}`,
       };
 
       const email = new Email();
@@ -952,7 +1006,7 @@ export class ProjectService {
       // TODO: activate background job for mail sending
       await this.sharedService.sendZeptoEmail({
         to: [{ email_address: { address: msg.to } }],
-        from: { address: msg.from, name: 'MotherShip' },
+        from: { address: msg.from, name: msg.sender },
         subject: msg.subject,
         htmlbody: msg.html,
       });

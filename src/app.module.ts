@@ -126,7 +126,7 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(cors(), helmet(), ExtractTokenMiddleWare)
-      .exclude('/auth/*')
+      .exclude('/v1/auth/*')
       .exclude('')
       .forRoutes('*');
   }
